@@ -40,6 +40,7 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
 from utils.logger import logger
 from ui.main_window import MainWindow
+from core.auth_server import stop_success_page
 
 def main():
     try:
@@ -47,7 +48,7 @@ def main():
         app = QApplication(sys.argv)
         
         # Establecer ícono de la aplicación
-        icon_path = os.path.join(os.path.dirname(__file__), 'resources', 'app_icon.svg')
+        icon_path = os.path.join(os.path.dirname(__file__), 'assets', 'app_icon.svg')
         if os.path.exists(icon_path):
             app.setWindowIcon(QIcon(icon_path))
         
@@ -55,10 +56,12 @@ def main():
         window = MainWindow()
         window.show()
         logger.info("Application started successfully")
-        sys.exit(app.exec())
+        app.exec()
     except Exception as e:
         logger.error(f"Application failed to start: {str(e)}")
         raise
+    finally:
+        stop_success_page()  # Asegurarse de que el servidor se cierre
 
 if __name__ == '__main__':
     main()

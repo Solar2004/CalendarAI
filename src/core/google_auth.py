@@ -6,8 +6,14 @@ from google.auth.exceptions import RefreshError
 import pickle
 from utils.logger import logger
 from utils.helpers import get_app_directory
+from .auth_server import start_success_page
 
-SCOPES = ['https://www.googleapis.com/auth/calendar']
+SCOPES = [
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'openid'
+]
 
 class GoogleAuthManager:
     def __init__(self):
@@ -67,12 +73,20 @@ class GoogleAuthManager:
                 SCOPES
             )
             
+            # Mostrar la URL de autorización en la consola
             credentials = flow.run_local_server(
                 port=0,  # Puerto aleatorio
                 authorization_prompt_message='Por favor, visita esta URL para autorizar la aplicación: {url}',
                 success_message='¡Autorización completada! Puedes cerrar esta ventana.',
                 open_browser=True
             )
+            
+            # Mostrar la URL de autorización en texto plano
+            logger.info(f"Por favor, visita esta URL para autorizar la aplicación: {flow.authorization_url}")
+            logger.info("¡Autorización completada! Puedes cerrar esta ventana.")
+            
+            # Iniciar la página de éxito
+            start_success_page()
             
             # Guardar las nuevas credenciales
             self._save_credentials(credentials)
@@ -92,6 +106,46 @@ class GoogleAuthManager:
         except Exception as e:
             logger.error(f"Error guardando credenciales: {str(e)}")
 
+    def clear_credentials(self):
+        """Limpia las credenciales y elimina el token guardado"""
+        try:
+            # Eliminar el archivo de token si existe
+            if os.path.exists(self.token_path):
+                os.remove(self.token_path)
+                logger.info("Token eliminado exitosamente")
+            
+            # Limpiar credenciales en memoria
+            self.credentials = None
+            logger.info("Credenciales limpiadas exitosamente")
+            
+        except Exception as e:
+            logger.error(f"Error limpiando credenciales: {str(e)}")
+            raise
+
     def is_authenticated(self) -> bool:
         """Check if we have valid credentials"""
-        return self.credentials and self.credentials.valid 
+        return self.credentials and self.credentials.valid
+
+    def get_user_info(self):
+        """Obtiene la información del perfil del usuario"""
+        try:
+            if not self.credentials:
+                return {}
+            
+            # Crear servicio de OAuth2
+            from googleapiclient.discovery import build
+            oauth2_service = build('oauth2', 'v2', credentials=self.credentials)
+            
+            # Obtener información del usuario
+            user_info = oauth2_service.userinfo().get().execute()
+            
+            return {
+                'name': user_info.get('name', ''),
+                'email': user_info.get('email', ''),
+                'picture': user_info.get('picture', ''),
+                'id': user_info.get('id', '')
+            }
+        
+        except Exception as e:
+            logger.error(f"Error obteniendo información del usuario: {str(e)}")
+            return {} 

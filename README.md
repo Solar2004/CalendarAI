@@ -4,12 +4,20 @@ Una aplicación de escritorio inteligente que ayuda a gestionar, analizar y opti
 
 ## Características
 
+### Características Actuales
 - **Predicciones de Eventos**: Analiza tendencias y predice eventos futuros
 - **Optimización de Horarios**: Sugiere mejores distribuciones de eventos y reuniones
 - **Sugerencias Inteligentes**: Recomienda mejoras en la gestión del tiempo
 - **Chat con IA**: Asistente integrado para consultas y gestión
 - **Panel de Desarrollo**: Herramientas para pruebas y configuración
 - **Integración con Google Calendar**: Sincronización bidireccional
+
+### Próximas Características
+- **Smart Templates**: Plantillas inteligentes que aprenden de tus patrones de eventos
+- **Calendar Analytics Dashboard**: Panel detallado de análisis de productividad
+- **Cross-Calendar Conflict Resolution**: Resolución automática de conflictos
+- **Voice Command Integration**: Control por voz para gestión de eventos
+- **Time Zone Smart Scheduling**: Programación inteligente multi zona horaria
 
 ## Instalación
 

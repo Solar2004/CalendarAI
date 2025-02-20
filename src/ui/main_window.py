@@ -14,6 +14,7 @@ from .components.chat_sidebar import ChatSidebar
 from datetime import datetime, timezone
 from core.database import DatabaseManager
 from .components.dev_panel import DevPanel
+from .components.top_bar import TopBar
 import os
 
 class MainWindow(QMainWindow):
@@ -59,16 +60,24 @@ class MainWindow(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)  # Eliminar márgenes
 
         # Initialize UI components
         self.setup_menubar()
         self.setup_toolbar()
         self.setup_statusbar()
         
-        # Crear layout horizontal principal
-        main_widget = QWidget()
-        self.setCentralWidget(main_widget)
-        horizontal_layout = QHBoxLayout(main_widget)
+        # Agregar TopBar primero
+        self.top_bar = TopBar()
+        self.main_layout.addWidget(self.top_bar)
+        self.top_bar.logoutRequested.connect(self.handle_logout)
+        self.top_bar.searchRequested.connect(self.handle_search)
+        
+        # Contenedor principal
+        content_widget = QWidget()
+        content_layout = QHBoxLayout(content_widget)
+        content_layout.setContentsMargins(10, 10, 10, 10)
+        self.main_layout.addWidget(content_widget)
         
         # Área del calendario
         calendar_widget = QWidget()
@@ -84,8 +93,8 @@ class MainWindow(QMainWindow):
         self.chat_sidebar.messageSubmitted.connect(self.handle_chat_message)
         
         # Agregar widgets al layout horizontal
-        horizontal_layout.addWidget(calendar_widget, stretch=2)
-        horizontal_layout.addWidget(self.chat_sidebar, stretch=1)
+        content_layout.addWidget(calendar_widget, stretch=2)
+        content_layout.addWidget(self.chat_sidebar, stretch=1)
 
         # Conectar señales del calendario
         self.calendar_widget.dateSelected.connect(self.on_date_selected)
@@ -110,19 +119,24 @@ class MainWindow(QMainWindow):
 
         # Tools menu
         tools_menu = menubar.addMenu('&Tools')
-        
-        # Add Developer Panel action
         dev_panel_action = QAction('Developer Panel', self)
         dev_panel_action.triggered.connect(self.show_dev_panel)
         tools_menu.addAction(dev_panel_action)
 
         # Add Google Calendar menu
         calendar_menu = menubar.addMenu('&Calendar')
+        
+        # Login action
         login_action = QAction('Login with Google', self)
         login_action.triggered.connect(self.handle_authentication)
         calendar_menu.addAction(login_action)
         
-        # Agregar acción de refresh
+        # Logout action
+        logout_action = QAction('Logout', self)
+        logout_action.triggered.connect(self.handle_logout)
+        calendar_menu.addAction(logout_action)
+        
+        # Refresh action
         refresh_action = QAction('Refresh Calendar', self)
         refresh_action.setShortcut('F5')
         refresh_action.triggered.connect(self.refresh_calendar)
@@ -156,15 +170,35 @@ class MainWindow(QMainWindow):
         pass
 
     def check_authentication(self):
-        """Verifica la autenticación y la renueva si es necesario"""
+        """Verifica la autenticación y muestra diálogos apropiados"""
         try:
+            # Preguntar si quiere iniciar sesión
             if not self.google_auth.is_authenticated():
-                self.handle_authentication()
+                response = QMessageBox.question(
+                    self,
+                    'Iniciar Sesión',
+                    '¿Deseas iniciar sesión con Google Calendar?',
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                )
+                
+                if response == QMessageBox.StandardButton.Yes:
+                    self.handle_authentication()
+                else:
+                    QMessageBox.warning(
+                        self,
+                        'Acceso Limitado',
+                        'La aplicación funcionará en modo limitado sin acceso al calendario.'
+                    )
             else:
                 self.setup_calendar_manager()
+                
         except Exception as e:
             logger.error(f"Error en autenticación: {str(e)}")
-            self.handle_authentication()
+            QMessageBox.critical(
+                self,
+                'Error de Autenticación',
+                f'Error al verificar autenticación: {str(e)}'
+            )
 
     def handle_authentication(self):
         """Maneja el proceso de autenticación"""
@@ -172,12 +206,12 @@ class MainWindow(QMainWindow):
             credentials = self.google_auth.get_credentials()
             if credentials and credentials.valid:
                 self.setup_calendar_manager()
-            else:
-                QMessageBox.warning(
+                QMessageBox.information(
                     self,
-                    'Autenticación Requerida',
-                    'Por favor, inicia sesión con Google Calendar'
+                    'Autenticación Exitosa',
+                    'Has iniciado sesión correctamente en Google Calendar'
                 )
+                self.load_calendar_data()
         except Exception as e:
             logger.error(f"Error en autenticación: {str(e)}")
             QMessageBox.critical(
@@ -187,9 +221,14 @@ class MainWindow(QMainWindow):
             )
 
     def setup_calendar_manager(self):
-        """Configura el manager del calendario"""
+        """Configura el manager del calendario y actualiza UI"""
         self.calendar_manager = GoogleCalendarManager(self.google_auth)
         self.chat_sidebar.update_calendar_manager(self.calendar_manager)
+        
+        # Obtener info del usuario
+        user_info = self.google_auth.get_user_info()
+        self.top_bar.update_profile(user_info)
+        
         self.load_calendar_data()
 
     def load_calendar_data(self):
@@ -308,6 +347,79 @@ class MainWindow(QMainWindow):
 
     def set_app_icon(self):
         """Establece el ícono de la aplicación"""
-        icon_path = os.path.join(os.path.dirname(__file__), '..', 'resources', 'app_icon.svg')
+        icon_path = os.path.join(os.path.dirname(__file__), '..', 'assets', 'app_icon.svg')
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path)) 
+
+    def handle_logout(self):
+        """Maneja el cierre de sesión"""
+        try:
+            # Limpiar credenciales
+            self.google_auth.clear_credentials()
+            self.calendar_manager = None
+            
+            # Mostrar mensaje
+            QMessageBox.information(
+                self,
+                'Sesión Cerrada',
+                'Has cerrado sesión exitosamente. La aplicación se cerrará.'
+            )
+            
+            # Cerrar la aplicación
+            self.close()
+            
+        except Exception as e:
+            logger.error(f"Error en logout: {str(e)}")
+            QMessageBox.critical(
+                self,
+                'Error',
+                f'Error al cerrar sesión: {str(e)}'
+            )
+
+    def handle_search(self, query: str):
+        """Maneja la búsqueda de eventos"""
+        try:
+            if not self.calendar_manager:
+                return
+            
+            # Obtener todos los eventos
+            events = self.calendar_manager.get_events()
+            
+            # Agrupar eventos por título y contenido exacto
+            event_groups = {}
+            for event in events:
+                key = (event.title, event.description or '')  # Usar tupla como clave
+                if key in event_groups:
+                    event_groups[key].append(event)
+                else:
+                    event_groups[key] = [event]
+            
+            # Filtrar grupos que coincidan con la búsqueda
+            search_results = []
+            query = query.lower()
+            for (title, desc), group in event_groups.items():
+                if query in title.lower() or (desc and query in desc.lower()):
+                    # Crear resultado con conteo
+                    search_results.append({
+                        'title': title,
+                        'description': desc,
+                        'count': len(group),
+                        'events': group
+                    })
+            
+            # Mostrar resultados
+            self.show_search_results(search_results)
+            
+        except Exception as e:
+            logger.error(f"Error en búsqueda: {str(e)}")
+            self.statusBar().showMessage(f"Error en búsqueda: {str(e)}")
+
+    def show_search_results(self, results):
+        """Muestra los resultados de la búsqueda"""
+        # Crear o actualizar el widget de resultados
+        if not hasattr(self, 'search_results_widget'):
+            from .components.search_results import SearchResultsWidget
+            self.search_results_widget = SearchResultsWidget(self)
+            self.main_layout.insertWidget(1, self.search_results_widget)  # Después del TopBar
+        
+        self.search_results_widget.update_results(results) 

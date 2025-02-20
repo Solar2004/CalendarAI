@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar AI Studio - Open Source</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="./app_icon.svg">
+    <link rel="shortcut icon" href="./app_icon.svg" type="image/svg+xml">
+    <style>
+        :root {
+            --dark-bg: #1A1B1E;
+            --primary-purple: #6C5CE7;
+            --accent-pink: #FF385C;
+            --accent-cyan: #00FFF0;
+            --text-primary: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --emerald-blue: #50C878;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .nav {
+            padding: 1.2rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            background: rgba(26, 27, 30, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            font-size: 1.25rem;
+        }
+
+        /* Estilos para la navegación activa */
+        .nav-link {
+            position: relative;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--primary-purple);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav-link.active {
+            color: var(--text-primary);
+        }
+
+        .nav-link.active::after {
+            width: 100%;
+        }
+
+        .faq-answer {
+            max-height: none;
+            opacity: 1;
+            overflow: visible;
+            padding: 1rem 0;
+        }
+
+        .arrow-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .faq-item.active .arrow-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Añade estos estilos */
+        .setup-section,
+        .faq-section {
+            opacity: 0;
+            height: 0;
+            overflow: hidden;
+            transition: all 0.5s ease-out;
+            padding: 4rem 2rem;
+            background: rgba(255, 255, 255, 0.02);
+            max-width: 1200px;
+            margin: 100px auto 0;
+            position: relative;
+        }
+
+
+        .hidden {
+            display: none !important;
+            opacity: 0;
+            height: 0;
+            visibility: hidden;
+        }
+
+
+        .section-visible {
+            opacity: 1;
+            height: auto;
+            display: block !important;
+            visibility: visible;
+            padding: 4rem 2rem;
+        }
+
+        .section-content {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease-out;
+        }
+
+        .section-visible .section-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .features-showcase {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto 100px;
+        }
+
+        /* Asegúrate de que estas secciones estén siempre visibles */
+        .hero,
+        .features-showcase {
+            opacity: 1 !important;
+            transform: none !important;
+        }
+
+        /* Ajusta el padding y margen de las secciones FAQ y Setup */
+        #faq,
+        #setup {
+            padding-top: 100px;
+            margin-top: 100px;
+            /* Cambiado a positivo */
+        }
+
+        /* Asegúrate de que el contenido principal esté visible inmediatamente */
+        .hero,
+        .features-showcase {
+            opacity: 1 !important;
+            transform: none !important;
+            /* Añadir espacio después de las características */
+        }
+
+        /* Animaciones para las secciones */
+        section {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s ease-out;
+        }
+
+        section.section-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Animación específica para FAQ y Setup */
+        #faq,
+        #setup {
+            position: relative;
+        }
+
+        #faq::before,
+        #setup::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg,
+                    rgba(108, 92, 231, 0),
+                    rgba(108, 92, 231, 0.5),
+                    rgba(108, 92, 231, 0));
+            transform: scaleX(0);
+            transition: transform 0.6s ease-out;
+        }
+
+        #faq.section-active::before,
+        #setup.section-active::before {
+            transform: scaleX(1);
+        }
+
+        /* Animación para los elementos dentro de las secciones */
+        .faq-item,
+        .setup-content {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.4s ease-out;
+        }
+
+        .section-active .faq-item,
+        .section-active .setup-content {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Retraso escalonado para los elementos FAQ */
+        .section-active .faq-item:nth-child(1) {
+            transition-delay: 0.1s;
+        }
+
+        .section-active .faq-item:nth-child(2) {
+            transition-delay: 0.2s;
+        }
+
+        .section-active .faq-item:nth-child(3) {
+            transition-delay: 0.3s;
+        }
+
+        /* Asegurarse que las secciones tengan suficiente espacio para el scroll */
+        #faq,
+        #setup {
+            padding-top: 100px;
+            /* Ajustar según la altura de tu header */
+            margin-top: -100px;
+            /* Compensar el padding para mantener el diseño */
+        }
+
+        .logo-img {
+            height: 24px;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-button {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nav-button.secondary {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-primary);
+        }
+
+        .nav-button.primary {
+            background: white;
+            color: var(--dark-bg);
+            border: none;
+        }
+
+        .nav-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-btn {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background: var(--dark-bg);
+            min-width: 200px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 1000;
+        }
+
+        .dropdown-content a {
+            color: var(--text-primary);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .dropdown-content a:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .hero {
+            padding: 120px 24px 60px;
+            text-align: center;
+            position: relative;
+            background: radial-gradient(circle at top right, rgba(108, 92, 231, 0.1), transparent),
+                radial-gradient(circle at bottom left, rgba(255, 105, 180, 0.1), transparent);
+        }
+
+        .floating-bubble {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--accent-pink), var(--accent-cyan));
+            filter: blur(80px);
+            opacity: 0.2;
+        }
+
+        .bubble-1 {
+            top: -150px;
+            left: -100px;
+        }
+
+        .bubble-2 {
+            bottom: -150px;
+            right: -100px;
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            line-height: 1.2;
+            background: linear-gradient(to right, #FFFFFF, #A8B2D1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .button {
+            padding: 0.875rem 1.75rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .button-primary {
+            background: var(--primary-purple);
+            color: white;
+        }
+
+        .button-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.3);
+        }
+
+        .features-showcase {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .tag {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 100px;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .tag-premium {
+            background: linear-gradient(90deg, #FF385C, #FF7E5F);
+            color: var(--text-primary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+
+        .tag-new {
+            background: linear-gradient(90deg, #00FF85, #50C878);
+            color: var(--text-primary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+
+        .tag-development {
+            background: linear-gradient(90deg, #6C5CE7, #A29BFE);
+            color: var(--text-primary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+
+        .setup-section {
+            padding: 4rem 2rem;
+            background: rgba(255, 255, 255, 0.02);
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .setup-content {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 2rem;
+            overflow-x: auto;
+        }
+
+        pre code {
+            color: #00FF85;
+            font-family: 'Fira Code', monospace;
+            white-space: pre-wrap;
+        }
+
+        .faq-section {
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 1rem;
+        }
+
+        .faq-question {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            cursor: pointer;
+        }
+
+        .faq-answer {
+            display: none;
+            padding: 1rem 0;
+            color: var(--text-secondary);
+        }
+
+        .arrow-icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            transition: transform 0.3s ease;
+        }
+
+        .faq-item.active .arrow-icon {
+            transform: rotate(180deg);
+        }
+
+        .faq-item.active .faq-answer {
+            display: block;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 4rem 2rem;
+            margin-top: 4rem;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 3rem;
+        }
+
+        .footer-section h4 {
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            font-size: 1.25rem;
+        }
+
+        .footer-section ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 0.75rem;
+        }
+
+        .footer-section ul li a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-section ul li a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-section p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+
+        .auth-success {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(52, 199, 89, 0.1);
+            border: 1px solid rgba(52, 199, 89, 0.2);
+            padding: 0.75rem 1.5rem;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #34C759;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+            z-index: 999;
+        }
+
+        .success-icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .cta-button {
+            background: linear-gradient(45deg, #6C5CE7, #a393f5);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .button-shine {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.1),
+                    transparent);
+            transform: rotate(45deg);
+            transition: 0.5s;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(108, 92, 231, 0.3);
+        }
+
+        .cta-button:hover .button-shine {
+            left: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .nav {
+                padding: 1rem;
+            }
+
+            .nav-links {
+                gap: 1rem;
+            }
+
+            .nav-link {
+                display: none;
+            }
+
+            .nav-button {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .footer-content {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            }
+
+            .nav-link {
+                padding: 0.5rem;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="nav">
+        <div class="logo">
+            <img src="./app_icon.svg" alt="Calendar AI Studio" class="logo-img">
+            <span>Calendar AI Studio</span>
+        </div>
+        <div class="nav-links">
+            <a href="#setup" class="nav-link">Setup</a>
+            <a href="#faq" class="nav-link">FAQ</a>
+            <a href="https://github.com/Solar2004/CalendarAI/issues" class="nav-link" target="_blank">Issues</a>
+            <a href="https://github.com/Solar2004/CalendarAI" class="nav-link" target="_blank">GitHub</a>
+        </div>
+    </nav>
+
+    <div class="auth-success">
+        <svg class="success-icon" viewBox="0 0 24 24">
+            <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+        </svg>
+        <span>Authorization completed successfully</span>
+    </div>
+
+    <section class="hero">
+        <div class="floating-bubble bubble-1"></div>
+        <div class="floating-bubble bubble-2"></div>
+        <br>
+        <h1>Calendar AI Studio</h1>
+        <p class="subtitle">Your intelligent assistant for advanced calendar management.</p>
+        <a href="https://github.com/Solar2004/CalendarAI" target="_blank">
+            <button class="cta-button">
+                Get started
+                <div class="button-shine"></div>
+            </button>
+        </a>
+    </section>
+
+    <section class="features-showcase">
+        <h2>Features</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <span class="tag tag-premium">PREMIUM</span>
+                <img src="/assets/preview/feature1.png" alt="AI Calendar">
+                <h3>Advanced AI</h3>
+                <p>DeepSeek AI-powered agenda optimization</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="tag tag-new">NEW</span>
+                <img src="/assets/preview/feature2.png" alt="Analytics">
+                <h3>Detailed Analysis</h3>
+                <p>Advanced metrics and visualizations of your productivity</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="tag tag-premium">PREMIUM</span>
+                <img src="/assets/preview/feature3.png" alt="Integration">
+                <h3>Multi-Platform Integration</h3>
+                <p>Connect with all your favorite tools</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="tag tag-development">IN DEVELOPMENT</span>
+                <img src="/assets/preview/feature4.png" alt="Event Management">
+                <h3>Event Management</h3>
+                <p>Comprehensive event creation, editing, and deletion</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="tag tag-development">IN DEVELOPMENT</span>
+                <img src="/assets/preview/feature5.png" alt="AI Assistant">
+                <h3>AI Assistant</h3>
+                <p>Natural language processing for event management</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="tag tag-development">IN DEVELOPMENT</span>
+                <img src="/assets/preview/feature6.png" alt="Optimization">
+                <h3>Optimization</h3>
+                <p>Suggests optimal scheduling and time management</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="tag tag-development">IN DEVELOPMENT</span>
+                <img src="/assets/preview/feature7.png" alt="Smart Templates">
+                <h3>Smart Templates</h3>
+                <p>AI-powered templates that learn from your scheduling patterns</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="tag tag-development">IN DEVELOPMENT</span>
+                <img src="/assets/preview/feature8.png" alt="Analytics Dashboard">
+                <h3>Analytics Dashboard</h3>
+                <p>Comprehensive insights into your time management</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="tag tag-development">IN DEVELOPMENT</span>
+                <img src="/assets/preview/feature9.png" alt="Conflict Resolution">
+                <h3>Smart Conflict Resolution</h3>
+                <p>Automatic handling of scheduling conflicts across calendars</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="tag tag-development">IN DEVELOPMENT</span>
+                <img src="/assets/preview/feature10.png" alt="Voice Commands">
+                <h3>Voice Integration</h3>
+                <p>Manage your calendar hands-free with voice commands</p>
+            </div>
+
+            <div class="feature-card">
+                <span class="tag tag-development">IN DEVELOPMENT</span>
+                <img src="/assets/preview/feature11.png" alt="Time Zone Smart">
+                <h3>Time Zone Intelligence</h3>
+                <p>Smart scheduling across different time zones</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="setup" class="setup-section hidden">
+        <div class="section-content">
+            <h2>Setup Instructions</h2>
+            <div class="setup-content">
+                <pre><code>
+# Clone the repository
+git clone https://github.com/yourusername/calendar-studio-ai.git
+cd calendar-studio-ai
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment variables
+cp .env.example .env
+# Edit .env with your credentials
+
+# Run the application
+python src/main.py
+
+# Google Calendar API Setup
+# 1. Go to Google Cloud Console
+# 2. Create a project
+# 3. Enable Calendar API
+# 4. Create OAuth credentials
+# 5. Download client_secrets.json
+
+# DeepSeek API Setup
+# 1. Obtain API key from OpenRouter
+# 2. Add to .env
+                </code></pre>
+            </div>
+        </div>
+    </section>
+
+    <section id="faq" class="faq-section hidden">
+        <div class="section-content">
+            <h2>Frequently Asked Questions</h2>
+            <div class="faq-container">
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>How does the Google Calendar integration work?</span>
+                        <svg class="arrow-icon" viewBox="0 0 24 24">
+                            <path d="M7 10l5 5 5-5z" />
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        The integration allows you to sync events between Google Calendar and the app, providing real-time updates and management capabilities.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>Is it really free? Are there any hidden costs?</span>
+                        <svg class="arrow-icon" viewBox="0 0 24 24">
+                            <path d="M7 10l5 5 5-5z" />
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        The core features are free to use. Premium features, marked with a "PREMIUM" tag, may require a subscription.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>What is the AI Assistant and how does it work?</span>
+                        <svg class="arrow-icon" viewBox="0 0 24 24">
+                            <path d="M7 10l5 5 5-5z" />
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        The AI Assistant uses natural language processing to help manage your calendar events. You can create, edit, and delete events using simple text commands.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>How do I set up the application?</span>
+                        <svg class="arrow-icon" viewBox="0 0 24 24">
+                            <path d="M7 10l5 5 5-5z" />
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        Follow the setup instructions provided in the Setup section. Ensure you have the necessary API keys and environment variables configured.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <span>Can I contribute to the project?</span>
+                        <svg class="arrow-icon" viewBox="0 0 24 24">
+                            <path d="M7 10l5 5 5-5z" />
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        Yes, contributions are welcome! Please fork the repository, make your changes, and submit a pull request.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>Calendar AI Studio</h4>
+                <p>Your intelligent assistant for advanced calendar management</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>Features</h4>
+                <ul>
+                    <li>Google Calendar Integration</li>
+                    <li>Real-time Analysis</li>
+                    <li>Smart Planning</li>
+                    <li>100% Open Source</li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Resources</h4>
+                <ul>
+                    <li><a href="https://github.com/Solar2004/CalendarAI/tree/main/docs">Documentation</a></li>
+                    <li><a href="#faq">FAQ</a></li>
+                    <li><a href="https://github.com/Solar2004/CalendarAI/issues">Report Issues</a></li>
+                    <li><a href="https://github.com/Solar2004/CalendarAI">GitHub</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-section">
+                <h4>Community</h4>
+                <ul>
+                    <li><a href="https://x.com/thelorianomg">Twitter</a></li>
+                    <li><a href="https://centaury.net/">Centaury Discussion</a></li>
+                    <li><a href="https://github.com/Solar2004/CalendarAI/fork">Contribute</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const sections = document.querySelectorAll('.setup-section, .faq-section');
+            sections.forEach(section => {
+                section.classList.add('hidden');
+                section.style.display = 'none';
+                section.style.marginTop = '100px';
+                section.style.marginBottom = '100px';
+            });
+
+            const featuresSection = document.querySelector('.features-showcase');
+            if (featuresSection) {
+                featuresSection.style.marginBottom = '100px';
+            }
+
+            function showSection(section) {
+                if (!section) return;
+
+                section.style.display = 'block';
+                section.classList.remove('hidden');
+
+                section.offsetHeight;
+
+                section.classList.add('section-visible');
+                section.classList.add('section-active');
+
+                section.style.marginTop = '100px';
+                section.style.marginBottom = '100px';
+
+                const headerOffset = 100;
+                const elementPosition = section.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                window.scrollTo({
+                    top: offsetPosition,
+                    behavior: 'smooth'
+                });
+            }
+
+            function hideSection(section) {
+                if (!section) return;
+                section.classList.add('hidden');
+                section.classList.remove('section-visible', 'section-active');
+                setTimeout(() => {
+                    section.style.display = 'none';
+                }, 500);
+            }
+
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+
+                    document.querySelectorAll('.nav-link').forEach(link => {
+                        link.classList.remove('active');
+                    });
+
+                    this.classList.add('active');
+
+                    sections.forEach(section => {
+                        if (section.id !== targetId.substring(1)) {
+                            hideSection(section);
+                        }
+                    });
+
+                    const targetSection = document.querySelector(targetId);
+                    if (targetSection) {
+                        showSection(targetSection);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.faq-question').forEach(question => {
+                question.addEventListener('click', () => {
+                    const item = question.parentElement;
+                    const answer = item.querySelector('.faq-answer');
+
+                    item.classList.toggle('active');
+
+                    if (item.classList.contains('active')) {
+                        answer.style.maxHeight = "none";
+                        answer.style.opacity = "1";
+                    } else {
+                        answer.style.maxHeight = "0";
+                        answer.style.opacity = "0";
+                    }
+                });
+            });
+
+            if (window.location.hash) {
+                const initialSection = document.querySelector(window.location.hash);
+                const correspondingLink = document.querySelector(`a[href="${window.location.hash}"]`);
+
+                if (initialSection) {
+                    setTimeout(() => {
+                        showSection(initialSection);
+                        if (correspondingLink) {
+                            correspondingLink.classList.add('active');
+                        }
+                    }, 100);
+                }
+            }
+
+            window.addEventListener('popstate', function (e) {
+                const hash = window.location.hash;
+                if (hash) {
+                    const targetSection = document.querySelector(hash);
+                    if (targetSection) {
+                        sections.forEach(section => {
+                            if (section !== targetSection) {
+                                hideSection(section);
+                            }
+                        });
+                        showSection(targetSection);
+                    }
+                } else {
+                    sections.forEach(section => {
+                        hideSection(section);
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

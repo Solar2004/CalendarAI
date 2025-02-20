@@ -512,4 +512,9 @@ class CalendarWidget(QWidget):
     def on_settings_changed(self):
         """Manejar cambios en la configuración"""
         self.update_auto_refresh()
-        self.refresh_view() 
+        self.refresh_view()
+
+    def clear_events(self):
+        """Limpia todos los eventos del calendario"""
+        self.events = []
+        self.update_calendar()  # Actualizar vista 
