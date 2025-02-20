@@ -19,7 +19,7 @@ class GoogleCalendarManager:
         credentials = self.auth_manager.get_credentials()
         self.service = build('calendar', 'v3', credentials=credentials)
 
-    def get_events(self, start_date: datetime = None, end_date: datetime = None) -> List[Event]:
+    def get_events(self, start_date: datetime = None, end_date: datetime = None, log_raw=True) -> List[Event]:
         """Get events between dates"""
         try:
             if not start_date:
@@ -51,7 +51,8 @@ class GoogleCalendarManager:
                 maxResults=2500  # Aumentar límite para obtener más eventos
             ).execute()
             
-            self._log_raw_events(events_result.get('items', []))
+            if log_raw:  # Solo loggear si se solicita
+                self._log_raw_events(events_result.get('items', []))
             
             events = events_result.get('items', [])
             

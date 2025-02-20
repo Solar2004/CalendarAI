@@ -1,8 +1,8 @@
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QMessageBox, QHBoxLayout, QLabel, QDialog
+    QMainWindow, QWidget, QVBoxLayout, QMessageBox, QHBoxLayout, QLabel, QDialog, QPushButton
 )
 from PyQt6.QtGui import QAction, QIcon
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QThread
 from config.constants import APP_NAME, DEFAULT_WINDOW_SIZE
 from config.settings import Settings
 from .styles.theme import Theme
@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from core.database import DatabaseManager
 from .components.dev_panel import DevPanel
 from .components.top_bar import TopBar
+from .workers.search_worker import SearchWorker
 import os
 
 class MainWindow(QMainWindow):
@@ -35,6 +36,9 @@ class MainWindow(QMainWindow):
         self.calendar_widget.monthChanged.connect(self.on_month_changed)
         self.update_api_status()
         self.calendar_widget.refreshRequested.connect(self.refresh_calendar)
+        self.search_thread = None
+        self.search_worker = None
+        self.current_search = None  # Para rastrear la búsqueda actual
 
     def clean_logs(self):
         """Limpia los archivos de log al inicio"""
@@ -99,6 +103,12 @@ class MainWindow(QMainWindow):
         # Conectar señales del calendario
         self.calendar_widget.dateSelected.connect(self.on_date_selected)
         self.calendar_widget.eventClicked.connect(self.on_event_clicked)
+        self.calendar_widget.eventClicked.connect(self.show_event_details)
+
+        # Conectar el botón de refresh de la TopBar con el calendario
+        refresh_button = self.top_bar.findChild(QPushButton, "refresh_button")
+        if refresh_button:
+            refresh_button.clicked.connect(self.refresh_calendar)
 
     def setup_menubar(self):
         menubar = self.menuBar()
@@ -381,45 +391,70 @@ class MainWindow(QMainWindow):
         try:
             if not self.calendar_manager:
                 return
+
+            # Si es la misma búsqueda, ignorar
+            if self.current_search == query:
+                return
+            self.current_search = query
+
+            # Detener thread anterior si existe
+            if self.search_thread and self.search_thread.isRunning():
+                self.search_thread.quit()
+                self.search_worker.deleteLater()
+                self.search_thread.deleteLater()
+                self.search_thread.wait()
+
+            # Crear thread y worker
+            self.search_thread = QThread()
+            self.search_worker = SearchWorker(self.calendar_manager, query)
+            self.search_worker.moveToThread(self.search_thread)
+
+            # Conectar señales
+            self.search_thread.started.connect(self.search_worker.search)
+            self.search_worker.finished.connect(self.show_search_results)
+            self.search_worker.error.connect(self.handle_search_error)
+            self.search_worker.finished.connect(lambda: self._cleanup_search())
             
-            # Obtener todos los eventos
-            events = self.calendar_manager.get_events()
-            
-            # Agrupar eventos por título y contenido exacto
-            event_groups = {}
-            for event in events:
-                key = (event.title, event.description or '')  # Usar tupla como clave
-                if key in event_groups:
-                    event_groups[key].append(event)
-                else:
-                    event_groups[key] = [event]
-            
-            # Filtrar grupos que coincidan con la búsqueda
-            search_results = []
-            query = query.lower()
-            for (title, desc), group in event_groups.items():
-                if query in title.lower() or (desc and query in desc.lower()):
-                    # Crear resultado con conteo
-                    search_results.append({
-                        'title': title,
-                        'description': desc,
-                        'count': len(group),
-                        'events': group
-                    })
-            
-            # Mostrar resultados
-            self.show_search_results(search_results)
+            # Iniciar búsqueda
+            self.search_thread.start()
             
         except Exception as e:
             logger.error(f"Error en búsqueda: {str(e)}")
             self.statusBar().showMessage(f"Error en búsqueda: {str(e)}")
 
-    def show_search_results(self, results):
-        """Muestra los resultados de la búsqueda"""
-        # Crear o actualizar el widget de resultados
+    def _cleanup_search(self):
+        """Limpia los recursos de búsqueda"""
+        if self.search_thread:
+            self.search_thread.quit()
+            self.search_worker.deleteLater()
+            self.search_thread.deleteLater()
+            self.search_thread.wait()
+            self.search_thread = None
+            self.search_worker = None
+            self.current_search = None
+
+    def show_search_results(self, search_results):
+        """Muestra los resultados de búsqueda"""
         if not hasattr(self, 'search_results_widget'):
             from .components.search_results import SearchResultsWidget
-            self.search_results_widget = SearchResultsWidget(self)
-            self.main_layout.insertWidget(1, self.search_results_widget)  # Después del TopBar
+            self.search_results_widget = SearchResultsWidget()
+            self.search_results_widget.eventClicked.connect(self.calendar_widget.highlight_events)
         
-        self.search_results_widget.update_results(results) 
+        self.search_results_widget.update_results(search_results)
+        self.search_results_widget.show_under_widget(self.top_bar.search_box)
+
+    def handle_search_error(self, error_msg):
+        """Maneja errores de búsqueda"""
+        logger.error(f"Error en búsqueda: {error_msg}")
+        self.statusBar().showMessage(f"Error en búsqueda: {error_msg}") 
+
+    def closeEvent(self, event):
+        """Se llama cuando se cierra la ventana"""
+        self._cleanup_search()
+        event.accept() 
+
+    def show_event_details(self, event):
+        """Muestra los detalles de un evento"""
+        from .components.event_details_dialog import EventDetailsDialog
+        dialog = EventDetailsDialog([event], self)
+        dialog.exec() 

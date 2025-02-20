@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QLineEdit, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPixmap, QIcon
+from PyQt6.QtGui import QPixmap, QIcon, QPainter, QPainterPath
 import requests
 from io import BytesIO
 import os
@@ -61,7 +61,8 @@ class TopBar(QWidget):
             QLabel {
                 border-radius: 16px;
                 background: #f0f0f0;
-                border: none;
+                border: 2px solid #e0e0e0;  /* Agregamos borde */
+                qproperty-scaledContents: true;  /* Para asegurar que la imagen se ajuste */
             }
         """)
         
@@ -115,6 +116,8 @@ class TopBar(QWidget):
             btn = QPushButton()
             btn.setIcon(QIcon(os.path.join(os.path.dirname(__file__), '..', '..', 'assets', f'{icon}_icon.svg')))
             btn.setFixedSize(32, 32)
+            if icon == "refresh":
+                btn.setObjectName("refresh_button")  # Asignar nombre para poder encontrarlo
             buttons_layout.addWidget(btn)
         
         center_layout.addStretch()  
@@ -156,7 +159,18 @@ class TopBar(QWidget):
                 response = requests.get(user_info['picture'])
                 img = QPixmap()
                 img.loadFromData(BytesIO(response.content).read())
-                self.profile_pic.setPixmap(img.scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio))
+                
+                # Crear una imagen circular
+                rounded_img = QPixmap(32, 32)
+                rounded_img.fill(Qt.GlobalColor.transparent)
+                painter = QPainter(rounded_img)
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+                path = QPainterPath()
+                path.addEllipse(2, 2, 28, 28)  # Ajustado para el borde
+                painter.setClipPath(path)
+                painter.drawPixmap(2, 2, 28, 28, img.scaled(28, 28, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                painter.end()
+                self.profile_pic.setPixmap(rounded_img)
             else:
                 default_avatar = QIcon(os.path.join(os.path.dirname(__file__), '..', '..', 'assets', 'default_avatar.svg'))
                 self.profile_pic.setPixmap(default_avatar.pixmap(32, 32))
@@ -180,3 +194,6 @@ class TopBar(QWidget):
         query = self.search_box.text().strip()
         if query:
             self.searchRequested.emit(query)
+            # El widget de resultados se mostrará bajo la barra de búsqueda
+            if hasattr(self.parent(), 'search_results_widget'):
+                self.parent().search_results_widget.show_under_widget(self.search_box)
