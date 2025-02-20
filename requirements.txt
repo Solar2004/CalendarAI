@@ -1,0 +1,11 @@
+PyQt6==6.6.1
+PyQt6-Qt6==6.6.1
+PyQt6-sip==13.6.0
+PyQt6-Charts==6.6.0
+PyQt6-Charts-Qt6==6.6.0
+google-auth-oauthlib==1.2.0
+google-api-python-client==2.108.0
+python-dotenv==1.0.0
+SQLAlchemy==2.0.23
+requests==2.31.0
+pytest==7.4.3
