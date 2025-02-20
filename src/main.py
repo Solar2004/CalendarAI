@@ -37,6 +37,7 @@ print_project_structure(project_root)
 sys.path.append(src_path)
 
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QIcon
 from utils.logger import logger
 from ui.main_window import MainWindow
 
@@ -44,6 +45,12 @@ def main():
     try:
         logger.info("Starting application...")
         app = QApplication(sys.argv)
+        
+        # Establecer ícono de la aplicación
+        icon_path = os.path.join(os.path.dirname(__file__), 'resources', 'app_icon.svg')
+        if os.path.exists(icon_path):
+            app.setWindowIcon(QIcon(icon_path))
+        
         app.setStyle('Fusion')
         window = MainWindow()
         window.show()

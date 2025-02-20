@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QMessageBox, QHBoxLayout, QLabel, QDialog
 )
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtCore import Qt
 from config.constants import APP_NAME, DEFAULT_WINDOW_SIZE
 from config.settings import Settings
@@ -14,6 +14,7 @@ from .components.chat_sidebar import ChatSidebar
 from datetime import datetime, timezone
 from core.database import DatabaseManager
 from .components.dev_panel import DevPanel
+import os
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -26,6 +27,7 @@ class MainWindow(QMainWindow):
         self.settings = Settings()
         self.settings.settingsChanged.connect(self.on_settings_changed)  # Conectar a la señal
         self.clean_logs()
+        self.set_app_icon()
         self.init_ui()
         self.check_authentication()
         self.apply_theme()
@@ -303,3 +305,9 @@ class MainWindow(QMainWindow):
         """Manejar cambios en la configuración"""
         self.update_api_status()  # Actualizar indicador de API
         # Actualizar otros componentes que dependan de la configuración 
+
+    def set_app_icon(self):
+        """Establece el ícono de la aplicación"""
+        icon_path = os.path.join(os.path.dirname(__file__), '..', 'resources', 'app_icon.svg')
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path)) 
