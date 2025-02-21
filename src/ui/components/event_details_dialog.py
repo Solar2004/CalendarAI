@@ -11,7 +11,7 @@ from datetime import datetime
 class EventDetailsDialog(QDialog):
     def __init__(self, events, parent=None):
         super().__init__(parent)
-        self.events = events if isinstance(events, list) else [events]
+        self.events = events
         self.init_ui()
 
     def init_ui(self):
@@ -29,7 +29,26 @@ class EventDetailsDialog(QDialog):
         scroll.setStyleSheet("""
             QScrollArea {
                 border: none;
-                background: white;
+                background: #2d2d2d;  /* Fondo oscuro */
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #444;  /* Fondo del scrollbar oscuro */
+                width: 8px;
+                margin: 0;
+            }
+            QScrollBar::handle:vertical {
+                background: #666;  /* Color del handle del scrollbar oscuro */
+                min-height: 40px;
+                border-radius: 4px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
+            QScrollBar:horizontal {
+                height: 0px;  /* Ocultar scrollbar horizontal */
+                background: transparent;  /* Asegurarse de que no se vea */
             }
         """)
 
@@ -45,11 +64,7 @@ class EventDetailsDialog(QDialog):
         icon_label.setPixmap(QIcon(icon_path).pixmap(24, 24))
         title_container.addWidget(icon_label)
 
-        # Si solo hay un evento, no mostrar el contador
-        if len(self.events) == 1:
-            title_label = QLabel(self.events[0].title)
-        else:
-            title_label = QLabel(f"{self.events[0].title} (Se repite {len(self.events)} veces)")
+        title_label = QLabel(self.events[0].title)
         title_label.setStyleSheet("""
             QLabel {
                 font-size: 18px;
@@ -59,6 +74,12 @@ class EventDetailsDialog(QDialog):
         """)
         title_container.addWidget(title_label)
         title_container.addStretch()
+        
+        # Si hay múltiples eventos, mostrar contador
+        if len(self.events) > 1:
+            count_label = QLabel(f"(Se repite {len(self.events)} veces)")
+            count_label.setStyleSheet("color: #666;")
+            title_container.addWidget(count_label)
         
         content_layout.addLayout(title_container)
 

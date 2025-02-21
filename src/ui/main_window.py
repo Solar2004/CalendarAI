@@ -103,7 +103,6 @@ class MainWindow(QMainWindow):
         # Conectar señales del calendario
         self.calendar_widget.dateSelected.connect(self.on_date_selected)
         self.calendar_widget.eventClicked.connect(self.on_event_clicked)
-        self.calendar_widget.eventClicked.connect(self.show_event_details)
 
         # Conectar el botón de refresh de la TopBar con el calendario
         refresh_button = self.top_bar.findChild(QPushButton, "refresh_button")
@@ -452,9 +451,3 @@ class MainWindow(QMainWindow):
         """Se llama cuando se cierra la ventana"""
         self._cleanup_search()
         event.accept() 
-
-    def show_event_details(self, event):
-        """Muestra los detalles de un evento"""
-        from .components.event_details_dialog import EventDetailsDialog
-        dialog = EventDetailsDialog([event], self)
-        dialog.exec() 

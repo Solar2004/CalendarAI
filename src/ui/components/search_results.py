@@ -119,7 +119,7 @@ class SearchResultItem(QWidget):
                 border-bottom: none;
             }
         """)
-
+        
         # Guardar referencia al contenedor clickeable
         self.clickable_container = clickable_container
 
@@ -210,7 +210,7 @@ class SearchResultsWidget(QWidget):
             }
         """)
         container_layout.addWidget(title_container)
-
+        
         # Área scrolleable para resultados
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -233,6 +233,10 @@ class SearchResultsWidget(QWidget):
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
                 border: none;
                 background: none;
+            }
+            QScrollBar:horizontal {
+                height: 0px;  /* Ocultar scrollbar horizontal */
+                background: transparent;  /* Asegurarse de que no se vea */
             }
         """)
         
@@ -292,7 +296,7 @@ class SearchResultsWidget(QWidget):
             item = self.results_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-
+        
         if not results:
             no_results = QLabel("No se encontraron resultados")
             no_results.setStyleSheet("""
@@ -317,8 +321,8 @@ class SearchResultsWidget(QWidget):
                 item.setFixedWidth(self.width())
                 item.clicked.connect(lambda events: self.eventClicked.emit(events))
                 self.results_layout.addWidget(item)
-
-        self.show()
+        
+        self.show() 
 
     def resizeEvent(self, event):
         """Se llama cuando el widget cambia de tamaño"""

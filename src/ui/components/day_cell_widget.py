@@ -144,9 +144,36 @@ class EventsDialog(QDialog):
         layout.setSpacing(12)
         
         scroll = QScrollArea()
-        scroll_widget = QWidget()
-        scroll_layout = QVBoxLayout(scroll_widget)
-        scroll_layout.setSpacing(12)
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: white;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f1f3f4;
+                width: 8px;
+                margin: 0;
+            }
+            QScrollBar::handle:vertical {
+                background: #dadce0;
+                min-height: 40px;
+                border-radius: 4px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
+            QScrollBar:horizontal {
+                height: 0px;  /* Ocultar scrollbar horizontal */
+                background: transparent;  /* Asegurarse de que no se vea */
+            }
+        """)
+
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setSpacing(15)
         
         # Mostrar eventos de todo el día
         if self.events['all_day']:
@@ -157,13 +184,13 @@ class EventsDialog(QDialog):
                 font-size: 14px;
                 padding: 4px;
             """)
-            scroll_layout.addWidget(all_day_label)
+            content_layout.addWidget(all_day_label)
             
             for event in self.events['all_day']:
                 event_widget = DetailedEventWidget(event)
-                scroll_layout.addWidget(event_widget)
+                content_layout.addWidget(event_widget)
             
-            scroll_layout.addSpacing(16)
+            content_layout.addSpacing(16)
         
         # Mostrar eventos con hora
         if self.events['timed']:
@@ -174,18 +201,45 @@ class EventsDialog(QDialog):
                 font-size: 14px;
                 padding: 4px;
             """)
-            scroll_layout.addWidget(timed_label)
+            content_layout.addWidget(timed_label)
             
             for event in self.events['timed']:
                 event_widget = DetailedEventWidget(event)
-                scroll_layout.addWidget(event_widget)
+                content_layout.addWidget(event_widget)
         
-        scroll_layout.addStretch()
-        scroll_widget.setLayout(scroll_layout)
+        content_layout.addStretch()
+        content_widget.setLayout(content_layout)
         
-        scroll.setWidget(scroll_widget)
-        scroll.setWidgetResizable(True)
+        scroll.setWidget(content_widget)
         layout.addWidget(scroll)
+
+        # Botón de cerrar
+        close_button = QPushButton("Cerrar")
+        close_button.clicked.connect(self.close)
+        close_button.setStyleSheet("""
+            QPushButton {
+                background: #1a73e8;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                min-width: 100px;
+            }
+            QPushButton:hover {
+                background: #1557b0;
+            }
+        """)
+        
+        button_container = QHBoxLayout()
+        button_container.addStretch()
+        button_container.addWidget(close_button)
+        layout.addLayout(button_container)
+
+        self.setStyleSheet("""
+            QDialog {
+                background: white;
+            }
+        """)
 
 class DayCellWidget(QWidget):
     def __init__(self, date: datetime, events: List[Event], parent=None):

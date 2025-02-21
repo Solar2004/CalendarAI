@@ -39,7 +39,8 @@ class CalendarWidget(QWidget):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        
+        layout.setContentsMargins(0, 0, 0, 0)
+
         # Header con mes y año
         header_layout = QHBoxLayout()
         
@@ -138,7 +139,7 @@ class CalendarWidget(QWidget):
         year = self.current_date.year()
         self.header_label.setText(f"{month_name} {year}")
 
-    def refresh_month_view(self, highlighted_events=None):
+    def refresh_month_view(self):
         """Refresca la vista de mes"""
         self._update_header()
         
@@ -198,7 +199,6 @@ class CalendarWidget(QWidget):
             date = QDate(self.current_date.year(), self.current_date.month(), day)
             
             cell = DayCellWidget(date.toPyDate(), current_month_events)
-            cell.eventClicked.connect(self._show_event_details)
             if date == QDate.currentDate():
                 cell.setStyleSheet("background-color: #e8f0fe;")
             
@@ -215,20 +215,6 @@ class CalendarWidget(QWidget):
         self.view_stack.removeWidget(self.view_stack.widget(0))
         self.view_stack.insertWidget(0, month_widget)
         self.view_stack.setCurrentWidget(month_widget)
-
-        # Modificar el estilo de los eventos resaltados
-        if highlighted_events:
-            for event in highlighted_events:
-                # Encontrar y resaltar el evento en la vista
-                # Agregar estilo especial para eventos resaltados
-                event_widget = self.find_event_widget(event)
-                if event_widget:
-                    event_widget.setStyleSheet("""
-                        background-color: #e8f0fe;
-                        border: 2px solid #1a73e8;
-                        border-radius: 4px;
-                        padding: 2px 4px;
-                    """)
 
     def find_event_widget(self, event):
         """Encuentra el widget de un evento específico"""
@@ -248,7 +234,42 @@ class CalendarWidget(QWidget):
         # Crear scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        
+        # Aplicar el estilo al scroll
+        scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: white;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f1f3f4;
+                width: 8px;
+                margin: 0;
+            }
+            QScrollBar::handle:vertical {
+                background: #dadce0;
+                min-height: 40px;
+                border-radius: 4px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
+            QScrollBar:horizontal {
+                height: 8px;  /* Altura del scrollbar horizontal */
+                background: #f1f3f4;  /* Fondo del scrollbar horizontal */
+            }
+            QScrollBar::handle:horizontal {
+                background: #dadce0;  /* Color del handle del scrollbar horizontal */
+                min-width: 40px;
+                border-radius: 4px;
+            }
+        """)
+        
         scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
         
         # Grid para las horas y eventos
         self.week_grid = QGridLayout(scroll_widget)
@@ -312,14 +333,13 @@ class CalendarWidget(QWidget):
                 if events:
                     for event in events:
                         event_widget = EventLabel(event)
-                        event_widget.setCursor(Qt.CursorShape.PointingHandCursor)
-                        event_widget.mousePressEvent = lambda e, ev=event: self._show_event_details(ev)
                         event_widget.setStyleSheet(Theme.EVENT_WEEK_STYLE)
                         cell_layout.addWidget(event_widget)
                 
                 cell.setStyleSheet(Theme.WEEK_CELL_STYLE)
                 self.week_grid.addWidget(cell, hour + 1, day + 1)
         
+        scroll_layout.addLayout(self.week_grid)
         scroll.setWidget(scroll_widget)
         week_layout.addWidget(scroll)
         
@@ -347,6 +367,39 @@ class CalendarWidget(QWidget):
         # Crear scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        
+        # Aplicar el estilo al scroll
+        scroll.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background: white;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f1f3f4;
+                width: 8px;
+                margin: 0;
+            }
+            QScrollBar::handle:vertical {
+                background: #dadce0;
+                min-height: 40px;
+                border-radius: 4px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
+            QScrollBar:horizontal {
+                height: 8px;  /* Altura del scrollbar horizontal */
+                background: #f1f3f4;  /* Fondo del scrollbar horizontal */
+            }
+            QScrollBar::handle:horizontal {
+                background: #dadce0;  /* Color del handle del scrollbar horizontal */
+                min-width: 40px;
+                border-radius: 4px;
+            }
+        """)
+        
         scroll_widget = QWidget()
         
         main_layout = QGridLayout(scroll_widget)
@@ -391,8 +444,6 @@ class CalendarWidget(QWidget):
             
             for event in sorted(all_day_events, key=lambda e: e.title):
                 event_widget = EventLabel(event)
-                event_widget.setCursor(Qt.CursorShape.PointingHandCursor)
-                event_widget.mousePressEvent = lambda e, ev=event: self._show_event_details(ev)
                 event_widget.setStyleSheet(Theme.EVENT_ALL_DAY_STYLE)
                 all_day_layout.addWidget(event_widget)
             
@@ -423,8 +474,6 @@ class CalendarWidget(QWidget):
             if hour_events:
                 for event in sorted(hour_events, key=lambda e: e.start_datetime):
                     event_widget = EventLabel(event)
-                    event_widget.setCursor(Qt.CursorShape.PointingHandCursor)
-                    event_widget.mousePressEvent = lambda e, ev=event: self._show_event_details(ev)
                     event_widget.setStyleSheet(Theme.EVENT_TIMED_STYLE)
                     hour_layout.addWidget(event_widget)
             
@@ -554,37 +603,10 @@ class CalendarWidget(QWidget):
             # Encontrar y resaltar el evento en la vista actual
             if self.current_view == 'month':
                 # Resaltar en vista de mes
-                self.refresh_month_view(highlighted_events=events)
+                self.refresh_month_view()
             elif self.current_view == 'week':
                 # Resaltar en vista de semana
-                self.refresh_week_view(highlighted_events=events)
+                self.refresh_week_view()
             else:
                 # Resaltar en vista de día
-                self.refresh_day_view(highlighted_events=events) 
-
-    def _show_event_details(self, event):
-        """Muestra los detalles del evento usando EventDetailsDialog"""
-        from .event_details_dialog import EventDetailsDialog
-        dialog = EventDetailsDialog([event], self)
-        dialog.exec()
-
-class DayCellWidget(QWidget):
-    eventClicked = pyqtSignal(Event)  # Señal para cuando se hace clic en un evento
-
-    def _create_event_label(self, event):
-        event_label = EventLabel(event)
-        event_label.setCursor(Qt.CursorShape.PointingHandCursor)
-        event_label.mousePressEvent = lambda e: self.eventClicked.emit(event) 
-
-class EventLabel(QLabel):
-    clicked = pyqtSignal(Event)
-
-    def __init__(self, event, parent=None):
-        super().__init__(parent)
-        self.event = event
-        self.setText(event.title)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        # ... resto del código existente ...
-
-    def mousePressEvent(self, event):
-        self.clicked.emit(self.event) 
+                self.refresh_day_view() 

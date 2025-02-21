@@ -118,6 +118,8 @@ class TopBar(QWidget):
             btn.setFixedSize(32, 32)
             if icon == "refresh":
                 btn.setObjectName("refresh_button")  # Asignar nombre para poder encontrarlo
+            elif icon == "settings":
+                btn.clicked.connect(self.open_settings_panel)  # Conectar al panel de configuración
             buttons_layout.addWidget(btn)
         
         center_layout.addStretch()  
@@ -197,3 +199,8 @@ class TopBar(QWidget):
             # El widget de resultados se mostrará bajo la barra de búsqueda
             if hasattr(self.parent(), 'search_results_widget'):
                 self.parent().search_results_widget.show_under_widget(self.search_box)
+
+    def open_settings_panel(self):
+        from .settings_panel import SettingsPanel
+        settings_panel = SettingsPanel(self)
+        settings_panel.exec()
