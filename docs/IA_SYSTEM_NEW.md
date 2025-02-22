@@ -34,7 +34,7 @@
 
 ## Personalización y Extras
 15. **Panel de Control Personalizado**: Los usuarios eligen qué gráficos y análisis ver en su panel principal.
-16. **Banco de Hábitos**: Biblioteca con hábitos saludables, sus beneficios y cómo implementarlos.
+16. **Banco de Hábitos**: Biblioteca con hábitos saludables, sus beneficios y cómo implementarlos, la ia tiene toda la información de este banco.
 17. **Recompensas Virtuales**: Gana puntos y medallas por completar tareas y alcanzar objetivos.
 
 ## Combinaciones Estratégicas
