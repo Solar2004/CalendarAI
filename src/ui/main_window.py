@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QMessageBox, QHBoxLayout, QLabel, QDialog, QPushButton
+    QMainWindow, QWidget, QVBoxLayout, QMessageBox, QHBoxLayout, QLabel, QDialog, QPushButton, QMenuBar
 )
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt, QThread
 from config.constants import APP_NAME, DEFAULT_WINDOW_SIZE
 from config.settings import Settings
@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from core.database import DatabaseManager
 from .components.dev_panel import DevPanel
 from .components.top_bar import TopBar
+from .components.settings_panel import SettingsPanel
+from .components.debug_panel import DebugPanel
 from .workers.search_worker import SearchWorker
 import os
 
@@ -131,6 +133,9 @@ class MainWindow(QMainWindow):
         dev_panel_action = QAction('Developer Panel', self)
         dev_panel_action.triggered.connect(self.show_dev_panel)
         tools_menu.addAction(dev_panel_action)
+        debug_action = QAction('Debug Panel', self)
+        debug_action.triggered.connect(self.open_debug_panel)
+        tools_menu.addAction(debug_action)
 
         # Add Google Calendar menu
         calendar_menu = menubar.addMenu('&Calendar')
@@ -451,3 +456,8 @@ class MainWindow(QMainWindow):
         """Se llama cuando se cierra la ventana"""
         self._cleanup_search()
         event.accept() 
+
+    def open_debug_panel(self):
+        debug_panel = DebugPanel(self)
+        debug_panel.setWindowModality(Qt.WindowModality.NonModal)  # Asegurarse de que sea no modal
+        debug_panel.show()  # Usar show() en lugar de exec() 
