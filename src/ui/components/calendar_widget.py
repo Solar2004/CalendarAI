@@ -40,7 +40,7 @@ class CalendarWidget(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-
+        
         # Header con mes y año
         header_layout = QHBoxLayout()
         
@@ -70,16 +70,16 @@ class CalendarWidget(QWidget):
         
         # Estilo para los botones de navegación
         nav_button_style = """
-            QPushButton {
-                border: 1px solid #dadce0;
-                border-radius: 4px;
+                QPushButton {
+                    border: 1px solid #dadce0;
+                    border-radius: 4px;
                 padding: 8px 12px;
-                background: white;
+                    background: white;
                 min-width: 32px;
-            }
-            QPushButton:hover {
-                background: #f1f3f4;
-            }
+                }
+                QPushButton:hover {
+                    background: #f1f3f4;
+                }
         """
         
         prev_button.setStyleSheet(nav_button_style)
