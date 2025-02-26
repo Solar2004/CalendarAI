@@ -20,7 +20,7 @@ class ThemeManager:
             app.setPalette(get_dark_palette())
             app.setStyleSheet(DARK_MODE_STYLE)
         else:
-            app.setPalette(get_light_palette())
+            app.setPalette(get_dark_palette())
             app.setStyleSheet("")
 
     def apply_current_theme(self):

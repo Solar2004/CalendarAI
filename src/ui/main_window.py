@@ -22,6 +22,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.db_manager = DatabaseManager()
+        self.dark_mode = False
         self.google_auth = GoogleAuthManager()
         self.calendar_manager = None
         self.calendar_widget = None
@@ -175,9 +176,12 @@ class MainWindow(QMainWindow):
             self.api_status_label.setStyleSheet("color: green;")
 
     def toggle_theme(self):
-        # This method is now empty as the theme is applied automatically
-        pass
-
+        if self.dark_mode:
+            self.setStyleSheet("")  # Tema claro (predeterminado)
+        else:
+            self.setStyleSheet("background-color: #2b2b2b; color: white;")  # Tema oscuro
+        self.dark_mode = not self.dark_mode
+        
     def check_authentication(self):
         """Verifica la autenticación y muestra diálogos apropiados"""
         try:
