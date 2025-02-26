@@ -6,6 +6,7 @@ venv/
 
 # Environment
 .env
+token.pickle
 
 # Environment variables and credentials
 credentials.json

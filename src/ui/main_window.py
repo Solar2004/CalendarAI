@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QMessageBox, QHBoxLayout, QLabel, QDialog, QPushButton
+    QMainWindow, QWidget, QVBoxLayout, QMessageBox, QHBoxLayout, QLabel, QDialog, QPushButton, QMenuBar, QFrame, QSplitter, QComboBox
 )
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt, QThread
 from config.constants import APP_NAME, DEFAULT_WINDOW_SIZE
 from config.settings import Settings
@@ -15,7 +15,11 @@ from datetime import datetime, timezone
 from core.database import DatabaseManager
 from .components.dev_panel import DevPanel
 from .components.top_bar import TopBar
+from .components.settings_panel import SettingsPanel
+from .components.debug_panel import DebugPanel
 from .workers.search_worker import SearchWorker
+from .components.mini_calendar import MiniCalendar
+from .components.sidebar_container import SidebarContainer
 import os
 
 class MainWindow(QMainWindow):
@@ -57,58 +61,47 @@ class MainWindow(QMainWindow):
         self.menuBar().setStyleSheet(Theme.MENUBAR_STYLE)
 
     def init_ui(self):
-        # Set window properties
         self.setWindowTitle(APP_NAME)
         self.resize(*DEFAULT_WINDOW_SIZE)
 
-        # Create central widget and main layout
-        self.central_widget = QWidget()
-        self.setCentralWidget(self.central_widget)
-        self.main_layout = QVBoxLayout(self.central_widget)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)  # Eliminar márgenes
+        # Crear el contenedor principal
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
 
-        # Initialize UI components
+        # Inicializar componentes de UI primero
         self.setup_menubar()
         self.setup_toolbar()
-        self.setup_statusbar()
-        
-        # Agregar TopBar primero
+        self.setup_statusbar()  # Asegurarse de que esto se llame antes de update_api_status
+
+        # TopBar
         self.top_bar = TopBar()
-        self.main_layout.addWidget(self.top_bar)
-        self.top_bar.logoutRequested.connect(self.handle_logout)
-        self.top_bar.searchRequested.connect(self.handle_search)
-        
-        # Contenedor principal
-        content_widget = QWidget()
-        content_layout = QHBoxLayout(content_widget)
-        content_layout.setContentsMargins(10, 10, 10, 10)
-        self.main_layout.addWidget(content_widget)
-        
+        main_layout.addWidget(self.top_bar)
+
+        # Crear un QSplitter para la sidebar y el contenido
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        main_layout.addWidget(splitter)
+
+        # Sidebar
+        self.sidebar = SidebarContainer()
+        self.sidebar.setMinimumWidth(200)
+        splitter.addWidget(self.sidebar)
+
         # Área del calendario
-        calendar_widget = QWidget()
-        calendar_layout = QVBoxLayout(calendar_widget)
         self.calendar_widget = CalendarWidget(settings=self.settings)
-        calendar_layout.addWidget(self.calendar_widget)
-        
+        splitter.addWidget(self.calendar_widget)
+
         # Barra lateral del chat
         self.chat_sidebar = ChatSidebar(
             db_manager=self.db_manager,
             calendar_manager=self.calendar_manager
         )
-        self.chat_sidebar.messageSubmitted.connect(self.handle_chat_message)
-        
-        # Agregar widgets al layout horizontal
-        content_layout.addWidget(calendar_widget, stretch=2)
-        content_layout.addWidget(self.chat_sidebar, stretch=1)
+        splitter.addWidget(self.chat_sidebar)
 
-        # Conectar señales del calendario
-        self.calendar_widget.dateSelected.connect(self.on_date_selected)
-        self.calendar_widget.eventClicked.connect(self.on_event_clicked)
+        # Configurar tamaños iniciales del splitter
+        splitter.setSizes([200, 600, 300])  # Tamaños iniciales para los paneles
 
-        # Conectar el botón de refresh de la TopBar con el calendario
-        refresh_button = self.top_bar.findChild(QPushButton, "refresh_button")
-        if refresh_button:
-            refresh_button.clicked.connect(self.refresh_calendar)
+        self.update_api_status()  # Mover aquí para asegurarse de que api_status_label esté inicializado
 
     def setup_menubar(self):
         menubar = self.menuBar()
@@ -132,6 +125,9 @@ class MainWindow(QMainWindow):
         dev_panel_action = QAction('Developer Panel', self)
         dev_panel_action.triggered.connect(self.show_dev_panel)
         tools_menu.addAction(dev_panel_action)
+        debug_action = QAction('Debug Panel', self)
+        debug_action.triggered.connect(self.open_debug_panel)
+        tools_menu.addAction(debug_action)
 
         # Add Google Calendar menu
         calendar_menu = menubar.addMenu('&Calendar')
@@ -158,13 +154,13 @@ class MainWindow(QMainWindow):
         # Add toolbar items later...
 
     def setup_statusbar(self):
+        """Configura la barra de estado"""
         self.statusBar().showMessage('Ready')
         
         # Agregar separador y estado de API
         self.statusBar().addPermanentWidget(QLabel(" | "))
-        self.api_status_label = QLabel()
+        self.api_status_label = QLabel()  # Crear la etiqueta aquí
         self.statusBar().addPermanentWidget(self.api_status_label)
-        self.update_api_status()
 
     def update_api_status(self):
         """Actualiza el indicador de modo de API en la barra de estado"""
@@ -455,3 +451,8 @@ class MainWindow(QMainWindow):
         """Se llama cuando se cierra la ventana"""
         self._cleanup_search()
         event.accept() 
+
+    def open_debug_panel(self):
+        debug_panel = DebugPanel(self)
+        debug_panel.setWindowModality(Qt.WindowModality.NonModal)  # Asegurarse de que sea no modal
+        debug_panel.show()  # Usar show() en lugar de exec() 

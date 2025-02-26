@@ -1,9 +1,9 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,
-    QPushButton, QScrollArea, QLabel, QGraphicsDropShadowEffect
+    QPushButton, QScrollArea, QLabel, QGraphicsDropShadowEffect, QLineEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint, QTimer
-from PyQt6.QtGui import QIcon, QColor
+from PyQt6.QtGui import QIcon
 from ..styles.theme import Theme
 from core.ai_assistant import AIAssistant
 from core.calendar_analyzer import CalendarAnalyzer
@@ -11,6 +11,7 @@ from .loading_overlay import LoadingOverlay
 from .analysis_worker import AnalysisWorker
 import logging
 from datetime import datetime
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -69,44 +70,34 @@ class ChatSidebar(QWidget):
         input_area = QWidget()
         input_layout = QVBoxLayout(input_area)
         
-        # Campo de texto con manejo de Enter
-        self.input_field = QTextEdit()
-        self.input_field.setPlaceholderText("Escribe un mensaje...")
-        self.input_field.setMaximumHeight(100)
-        self.input_field.setStyleSheet(Theme.CHAT_INPUT_STYLE)
-        self.input_field.keyPressEvent = self.handle_input_key_press
+        # Contenedor para el campo de texto y botones
+        message_container = QHBoxLayout()
         
-        # Botones
-        buttons_layout = QHBoxLayout()
-        
+        # Botón de clip
+        clip_button = QPushButton()
+        clip_button.setIcon(QIcon(os.path.join(os.path.dirname(__file__), '..', '..', 'assets', 'clip_icon.svg')))
+        clip_button.setFixedSize(32, 32)
+        clip_button.setStyleSheet("border: none;")  # Sin borde
+        clip_button.clicked.connect(self.handle_clip)  # Conectar a la función de clip
+
+        # Campo de texto
+        self.message_input = QLineEdit()
+        self.message_input.setPlaceholderText("Escribe un mensaje...")
+        self.message_input.setStyleSheet("border-radius: 15px; padding: 5px;")
+
         # Botón de enviar
-        self.send_button = QPushButton("Enviar")
-        self.send_button.setStyleSheet(Theme.BUTTON_STYLE)
-        self.send_button.clicked.connect(self.handle_send)
-        
-        # Botón de deshacer
-        self.undo_button = QPushButton()
-        self.undo_button.setStyleSheet(Theme.ICON_BUTTON_STYLE)
-        undo_icon = QIcon()
-        undo_icon.addFile("src/assets/undo.svg", QSize(16, 16))
-        self.undo_button.setIcon(undo_icon)
-        self.undo_button.setToolTip("Deshacer")
-        
-        # Botón de rehacer
-        self.redo_button = QPushButton()
-        self.redo_button.setStyleSheet(Theme.ICON_BUTTON_STYLE)
-        redo_icon = QIcon()
-        redo_icon.addFile("src/assets/redo.svg", QSize(16, 16))
-        self.redo_button.setIcon(redo_icon)
-        self.redo_button.setToolTip("Rehacer")
-        
-        buttons_layout.addWidget(self.undo_button)
-        buttons_layout.addWidget(self.redo_button)
-        buttons_layout.addStretch()
-        buttons_layout.addWidget(self.send_button)
-        
-        input_layout.addWidget(self.input_field)
-        input_layout.addLayout(buttons_layout)
+        send_button = QPushButton()
+        send_button.setIcon(QIcon(os.path.join(os.path.dirname(__file__), '..', '..', 'assets', 'send_icon.svg')))
+        send_button.setFixedSize(32, 32)
+        send_button.setStyleSheet("border: none;")  # Sin borde
+        send_button.clicked.connect(self.handle_send)  # Conectar a la función de enviar
+
+        # Agregar widgets al contenedor
+        message_container.addWidget(clip_button)
+        message_container.addWidget(self.message_input)
+        message_container.addWidget(send_button)
+
+        input_layout.addLayout(message_container)
         
         # Botones de acciones
         actions_layout = QHBoxLayout()
@@ -144,24 +135,22 @@ class ChatSidebar(QWidget):
         
         layout.addWidget(self.thinking_indicator)
 
-    def handle_input_key_press(self, event):
-        """Maneja eventos de teclado en el input"""
-        if event.key() == Qt.Key.Key_Return and not event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-            self.handle_send()
-        else:
-            # Llamar al evento original para otros casos
-            QTextEdit.keyPressEvent(self.input_field, event)
+    def handle_clip(self):
+        """Maneja la acción del botón de clip"""
+        # Lógica para adjuntar archivos
+        pass
 
     def handle_send(self):
-        """Maneja el envío de mensajes"""
-        text = self.input_field.toPlainText().strip()
-        if text:
-            self.add_message(text, True)
-            self.input_field.clear()
+        """Maneja la acción del botón de enviar"""
+        message = self.message_input.text()
+        if message:
+            # Lógica para enviar el mensaje
+            self.message_input.clear()  # Limpiar el campo de texto
+            self.add_message(message, True)
             self.start_thinking_animation()
             
             # Usar QTimer para procesar la respuesta de manera asíncrona
-            QTimer.singleShot(0, lambda: self.process_ai_response(text))
+            QTimer.singleShot(0, lambda: self.process_ai_response(message))
 
     def process_ai_response(self, text):
         """Procesa la respuesta del AI"""
