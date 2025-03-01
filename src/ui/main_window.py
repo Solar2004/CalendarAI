@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QMessageBox, QHBoxLayout, QLabel, QDialog, QPushButton, QMenuBar, QFrame, QSplitter, QComboBox
+    QMainWindow, QWidget, QVBoxLayout, QMessageBox, QHBoxLayout, QLabel, QDialog, QPushButton, QMenuBar, QFrame, QSplitter, QComboBox, QApplication
 )
 from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtCore import Qt, QThread
@@ -55,52 +55,104 @@ class MainWindow(QMainWindow):
             logger.error(f"Error cleaning logs: {str(e)}")
 
     def apply_theme(self):
-        """Aplica el tema claro a toda la aplicación"""
+        """Aplica el tema actual a la ventana principal"""
+        # Apply main window style
         self.setStyleSheet(Theme.MAIN_WINDOW_STYLE)
-        self.menuBar().setStyleSheet(Theme.MENUBAR_STYLE)
+        
+        # Aplicar estilo a la barra de menú
+        is_dark = Theme.is_dark_mode
+        text_color = Theme.DARK_TEXT if is_dark else Theme.LIGHT_TEXT
+        bg_color = Theme.DARK_BG if is_dark else Theme.LIGHT_BG
+        hover_color = Theme.DARK_HOVER if is_dark else Theme.LIGHT_HOVER
+        border_color = Theme.DARK_BORDER if is_dark else Theme.LIGHT_BORDER
+        
+        self.menuBar().setStyleSheet(f"""
+            QMenuBar {{
+                background-color: {bg_color};
+                color: {text_color};
+            }}
+            QMenuBar::item:selected {{
+                background-color: {hover_color};
+            }}
+            QMenu {{
+                background-color: {bg_color};
+                color: {text_color};
+                border: 1px solid {border_color};
+            }}
+            QMenu::item:selected {{
+                background-color: {hover_color};
+            }}
+        """)
+        
+        # Update calendar widget
+        if hasattr(self, 'calendar_widget') and self.calendar_widget:
+            self.calendar_widget.update_theme()
+            
+        # Update top bar
+        if hasattr(self, 'top_bar') and self.top_bar:
+            self.top_bar.update_theme()
+            
+        # Update sidebar container
+        if hasattr(self, 'sidebar_container') and self.sidebar_container:
+            self.sidebar_container.update_theme()
+            
+        # Update search results widget
+        if hasattr(self, 'search_results_widget') and self.search_results_widget:
+            self.search_results_widget.update_theme()
+            
+        # Apply global styles
+        self.apply_global_styles()
 
     def init_ui(self):
         self.setWindowTitle(APP_NAME)
         self.resize(*DEFAULT_WINDOW_SIZE)
 
-        # Crear el contenedor principal
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
-
-        # Inicializar componentes de UI primero
+        # Main widget and layout
+        main_widget = QWidget()
+        main_layout = QHBoxLayout(main_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        # Splitter for main content and sidebar
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+        
+        # Left side (calendar)
+        calendar_container = QWidget()
+        calendar_layout = QVBoxLayout(calendar_container)
+        calendar_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Top bar with search and user info
+        self.top_bar = TopBar(self)
+        self.top_bar.searchRequested.connect(self.handle_search)
+        calendar_layout.addWidget(self.top_bar)
+        
+        # Calendar widget
+        self.calendar_widget = CalendarWidget(settings=self.settings, parent=self)
+        self.calendar_widget.dateSelected.connect(self.on_date_selected)
+        self.calendar_widget.eventClicked.connect(self.on_event_clicked)
+        calendar_layout.addWidget(self.calendar_widget)
+        
+        # Right side (chat sidebar in a container)
+        self.sidebar_container = SidebarContainer(self)
+        self.chat_sidebar = ChatSidebar(self, self.db_manager, self.calendar_manager)
+        self.chat_sidebar.themeToggled.connect(self.handle_theme_toggle)  # Conectar al nuevo método de cambio de tema
+        self.sidebar_container.set_content(self.chat_sidebar)
+        
+        # Add widgets to splitter
+        self.splitter.addWidget(calendar_container)
+        self.splitter.addWidget(self.sidebar_container)
+        
+        # Set initial sizes (70% calendar, 30% sidebar)
+        self.splitter.setSizes([int(DEFAULT_WINDOW_SIZE[0] * 0.7), int(DEFAULT_WINDOW_SIZE[0] * 0.3)])
+        
+        main_layout.addWidget(self.splitter)
+        self.setCentralWidget(main_widget)
+        
+        # Setup menu bar
         self.setup_menubar()
-        self.setup_toolbar()
-        self.setup_statusbar()  # Asegurarse de que esto se llame antes de update_api_status
-
-        # TopBar
-        self.top_bar = TopBar()
-        main_layout.addWidget(self.top_bar)
-
-        # Crear un QSplitter para la sidebar y el contenido
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        main_layout.addWidget(splitter)
-
-        # Sidebar
-        self.sidebar = SidebarContainer()
-        self.sidebar.setMinimumWidth(200)
-        splitter.addWidget(self.sidebar)
-
-        # Área del calendario
-        self.calendar_widget = CalendarWidget(settings=self.settings)
-        splitter.addWidget(self.calendar_widget)
-
-        # Barra lateral del chat
-        self.chat_sidebar = ChatSidebar(
-            db_manager=self.db_manager,
-            calendar_manager=self.calendar_manager
-        )
-        splitter.addWidget(self.chat_sidebar)
-
-        # Configurar tamaños iniciales del splitter
-        splitter.setSizes([200, 600, 300])  # Tamaños iniciales para los paneles
-
-        self.update_api_status()  # Mover aquí para asegurarse de que api_status_label esté inicializado
+        
+        # Setup status bar
+        self.setup_statusbar()
 
     def setup_menubar(self):
         menubar = self.menuBar()
@@ -114,10 +166,8 @@ class MainWindow(QMainWindow):
 
         # View menu
         view_menu = menubar.addMenu('&View')
-        toggle_theme_action = QAction('Toggle Theme', self)
-        toggle_theme_action.setShortcut('Ctrl+T')
-        toggle_theme_action.triggered.connect(self.toggle_theme)
-        view_menu.addAction(toggle_theme_action)
+        # Removed theme toggle action that was causing bugs
+        # since we already have a theme toggle button elsewhere
 
         # Tools menu
         tools_menu = menubar.addMenu('&Tools')
@@ -171,8 +221,14 @@ class MainWindow(QMainWindow):
             self.api_status_label.setStyleSheet("color: green;")
 
     def toggle_theme(self):
-        # This method is now empty as the theme is applied automatically
-        pass
+        """Toggle between light and dark themes"""
+        is_dark_mode = Theme.toggle_theme()
+        self.apply_theme()
+        return is_dark_mode
+
+    def on_theme_toggled(self, is_dark_mode):
+        """Handle theme toggle from chat sidebar"""
+        self.apply_theme()
 
     def check_authentication(self):
         """Verifica la autenticación y muestra diálogos apropiados"""
@@ -451,4 +507,45 @@ class MainWindow(QMainWindow):
     def open_debug_panel(self):
         debug_panel = DebugPanel(self)
         debug_panel.setWindowModality(Qt.WindowModality.NonModal)  # Asegurarse de que sea no modal
-        debug_panel.show()  # Usar show() en lugar de exec() 
+        debug_panel.show()  # Usar show() en lugar de exec()
+
+    def handle_theme_toggle(self, is_dark_mode):
+        """Maneja el cambio de tema"""
+        try:
+            # Actualizar estilos de componentes principales
+            self.setStyleSheet(Theme.MAIN_WINDOW_STYLE)
+            
+            # Actualizar componentes específicos
+            if hasattr(self, 'top_bar'):
+                self.top_bar.update_theme()
+                
+            if hasattr(self, 'calendar_widget'):
+                self.calendar_widget.update_theme()
+                
+            if hasattr(self, 'sidebar_container'):
+                self.sidebar_container.update_theme()
+                
+            if hasattr(self, 'search_results_widget'):
+                self.search_results_widget.update_theme()
+                
+            # Actualizar diálogos abiertos
+            for widget in QApplication.topLevelWidgets():
+                # Actualizar EventDetailsDialog, DevPanel, SettingsPanel si están abiertos
+                if widget.isVisible() and hasattr(widget, 'update_theme'):
+                    widget.update_theme()
+                
+            # Actualizar scrollbars globales
+            self.apply_global_styles()
+            
+            # Guardar preferencia de tema
+            self.settings.update_setting('dark_mode', is_dark_mode)
+            self.settings.save()
+            
+            logger.info(f"Tema cambiado a {'oscuro' if is_dark_mode else 'claro'}")
+        except Exception as e:
+            logger.error(f"Error al cambiar tema: {str(e)}")
+            
+    def apply_global_styles(self):
+        """Aplica estilos globales a la aplicación"""
+        # Aplicar estilo de scrollbar global
+        QApplication.instance().setStyleSheet(Theme.SCROLLBAR_STYLE)

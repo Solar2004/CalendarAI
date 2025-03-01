@@ -20,6 +20,7 @@ class Settings(QObject):
         self.use_mock_api = False
         self.mock_api_response = ""
         self.auto_refresh_enabled = True
+        self.dark_mode = False  # Add dark_mode setting
         self.load()  # Cargar configuración al inicializar
 
     def load(self):
@@ -32,6 +33,7 @@ class Settings(QObject):
                     self.use_mock_api = data.get('use_mock_api', False)
                     self.mock_api_response = data.get('mock_api_response', "")
                     self.auto_refresh_enabled = data.get('auto_refresh_enabled', True)
+                    self.dark_mode = data.get('dark_mode', False)  # Load dark_mode setting
                 logging.info("Settings loaded successfully")
                 self.settingsChanged.emit()  # Emitir señal cuando se cargan cambios
         except Exception as e:
@@ -47,12 +49,21 @@ class Settings(QObject):
                 json.dump({
                     'use_mock_api': self.use_mock_api,
                     'mock_api_response': self.mock_api_response,
-                    'auto_refresh_enabled': self.auto_refresh_enabled
+                    'auto_refresh_enabled': self.auto_refresh_enabled,
+                    'dark_mode': self.dark_mode  # Save dark_mode setting
                 }, f, indent=4)
             logging.info("Settings saved successfully")
             self.settingsChanged.emit()  # Emitir señal cuando se guardan cambios
         except Exception as e:
             logging.error(f"Error saving settings: {e}")
+
+    def update_setting(self, key, value):
+        """Actualiza una configuración específica y guarda los cambios"""
+        if hasattr(self, key):
+            setattr(self, key, value)
+            self.save()
+            return True
+        return False
 
     def load_from_file(self):
         # ... código para cargar configuración desde archivo ...

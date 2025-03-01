@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="24px" height="24px" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Dark Mode</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M12,21 C7.02944,21 3,16.9706 3,12 C3,7.02944 7.02944,3 12,3 C16.9706,3 21,7.02944 21,12 C21,16.9706 16.9706,21 12,21 Z M12,19 C15.866,19 19,15.866 19,12 C19,8.13401 15.866,5 12,5 C8.13401,5 5,8.13401 5,12 C5,15.866 8.13401,19 12,19 Z" fill="#8ab4f8" fill-rule="nonzero"></path>
+        <path d="M12,19 C8.13401,19 5,15.866 5,12 C5,8.13401 8.13401,5 12,5 L12,19 Z" fill="#8ab4f8" fill-rule="nonzero"></path>
+    </g>
+</svg> 
