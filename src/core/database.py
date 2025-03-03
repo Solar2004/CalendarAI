@@ -1,10 +1,14 @@
 import sqlite3
 from pathlib import Path
 from utils.logger import logger
+import os
+
+# Update the path to calendar.db in the root data folder
+DATABASE_PATH = os.path.join(os.path.dirname(__file__), '../../data', 'calendar.db')
 
 class DatabaseManager:
     def __init__(self):
-        self.db_path = Path('data/calendar.db')
+        self.db_path = Path(DATABASE_PATH)
         self.db_path.parent.mkdir(exist_ok=True)
         self.init_db()
 

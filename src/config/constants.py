@@ -54,9 +54,9 @@ LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 LOG_DIRECTORY = 'logs'
 
 # AI constants
-DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
-if not DEEPSEEK_API_KEY:
-    raise ValueError("DEEPSEEK_API_KEY no encontrada en variables de entorno")
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+if not OPENROUTER_API_KEY:
+    raise ValueError("OPENROUTER_API_KEY no encontrada en variables de entorno")
 DEFAULT_AI_CONTEXT = """
 You are a helpful calendar assistant. You help users manage their schedule and create events.
 You can understand natural language requests and convert them into structured event data.

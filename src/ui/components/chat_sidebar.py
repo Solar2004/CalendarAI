@@ -3,13 +3,14 @@ from PyQt6.QtWidgets import (
     QPushButton, QScrollArea, QLabel, QGraphicsDropShadowEffect, QLineEdit,
     QApplication
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint, QTimer, QPointF
+from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint, QTimer, QPointF, QThread
 from PyQt6.QtGui import QIcon, QColor
 from ..styles.theme import Theme
 from core.ai_assistant import AIAssistant
 from core.calendar_analyzer import CalendarAnalyzer
 from .loading_overlay import LoadingOverlay
 from .analysis_worker import AnalysisWorker
+from .chat_worker import Worker
 import logging
 from datetime import datetime
 import os
@@ -259,23 +260,41 @@ class ChatSidebar(QWidget):
         """Maneja la acción del botón de enviar"""
         message = self.message_input.text()
         if message:
-            # Lógica para enviar el mensaje
+            logger.info("Mensaje enviado por el usuario: %s", message)
             self.message_input.clear()  # Limpiar el campo de texto
             self.add_message(message, True)
             self.start_thinking_animation()
-            
-            # Usar QTimer para procesar la respuesta de manera asíncrona
-            QTimer.singleShot(0, lambda: self.process_ai_response(message))
 
-    def process_ai_response(self, text):
+            # Crear un hilo para procesar la respuesta
+            self.thread = QThread()
+            self.worker = Worker(self.ai_assistant, message)
+            self.worker.moveToThread(self.thread)
+
+            # Conectar señales
+            self.thread.started.connect(self.worker.run)
+            self.worker.finished.connect(self.process_ai_response)
+            self.worker.error.connect(self.handle_error)
+            self.thread.finished.connect(self.thread.deleteLater)
+            self.worker.finished.connect(self.thread.quit)
+
+            # Iniciar el hilo
+            self.thread.start()
+
+    def process_ai_response(self, response):
         """Procesa la respuesta del AI"""
         try:
-            response = self.ai_assistant.process_message(text)
+            logger.info("Procesando respuesta de la IA para el mensaje: %s", response)
             self.stop_thinking_animation()
             self.add_message(response, False)
         except Exception as e:
+            logger.error("Error al procesar la respuesta de la IA: %s", str(e))
             self.stop_thinking_animation()
             self.add_message(f"Error: {str(e)}", False)
+
+    def handle_error(self, error_msg):
+        """Maneja errores en el procesamiento de la IA"""
+        self.stop_thinking_animation()
+        self.add_message(f"Error: {error_msg}", False)
 
     def start_thinking_animation(self):
         """Inicia la animación de 'pensando'"""

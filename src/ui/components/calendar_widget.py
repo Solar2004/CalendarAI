@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QCalendarWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QComboBox, QStackedWidget, QGridLayout, QLabel,
-    QScrollArea
+    QScrollArea, QFrame
 )
 from PyQt6.QtCore import Qt, QDate, pyqtSignal, QLocale, QTimer
 from PyQt6.QtGui import QIcon
@@ -180,7 +180,8 @@ class CalendarWidget(QWidget):
         days_in_month = first_day.daysInMonth()
         
         # Obtener el día de la semana del primer día (0=lunes, 6=domingo)
-        first_day_of_week = first_day.dayOfWeek() % 7
+        # En PyQt6, dayOfWeek() devuelve 1=lunes, 7=domingo, por lo que restamos 1
+        first_day_of_week = first_day.dayOfWeek() - 1
         
         # Añadir cabeceras de días de la semana
         days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
@@ -615,22 +616,34 @@ class CalendarWidget(QWidget):
         if highlighted_events is None:
             highlighted_events = []
         
-        # Crear nuevo widget para la vista diaria
-        day_widget = QWidget()
-        day_layout = QVBoxLayout(day_widget)
-        day_layout.setContentsMargins(10, 10, 10, 10)
-        day_layout.setSpacing(10)
+        # Limpiar la vista actual
+        if hasattr(self, 'day_grid'):
+            QWidget().setLayout(self.day_grid)
+        
+        # Crear nuevo grid
+        self.day_grid = QGridLayout()
+        self.day_grid.setSpacing(0)
+        
+        # Obtener el día actual
+        current_date = self.current_date
         
         # Aplicar estilo basado en el tema actual
         is_dark = Theme.is_dark_mode
-        bg_color = Theme.DARK_BG if is_dark else Theme.LIGHT_BG
         text_color = Theme.DARK_TEXT if is_dark else Theme.LIGHT_TEXT
+        bg_color = Theme.DARK_BG if is_dark else Theme.LIGHT_BG
         border_color = Theme.DARK_BORDER if is_dark else Theme.LIGHT_BORDER
         accent_color = Theme.DARK_ACCENT if is_dark else Theme.LIGHT_ACCENT
         
-        # Filtrar eventos para el día seleccionado
-        selected_date = self.current_date
+        # Crear un mapa de colores para eventos con el mismo nombre
+        event_colors_by_name = {}
+        for event in self.events:
+            if event.color_id and event.title:
+                event_colors_by_name[event.title] = event.color_id
+        
+        # Filtrar eventos para este día y separarlos por tipo
         day_events = []
+        all_day_events = []
+        timed_events = []
         
         for event in self.events:
             event_date = QDate(
@@ -639,35 +652,97 @@ class CalendarWidget(QWidget):
                 event.start_datetime.day
             )
             
-            if event_date == selected_date:
+            if event_date == current_date:
                 day_events.append(event)
+                if event.is_all_day:
+                    all_day_events.append(event)
+                else:
+                    timed_events.append(event)
         
-        # Separar eventos de todo el día y eventos con hora
-        all_day_events = []
-        timed_events = []
+        # Añadir cabecera del día en la primera fila
+        day_header = QWidget()
+        day_layout = QVBoxLayout(day_header)
+        day_layout.setContentsMargins(5, 5, 5, 5)
         
-        for event in day_events:
-            if event.is_all_day:
-                all_day_events.append(event)
-            else:
-                timed_events.append(event)
+        # Obtener el nombre del día
+        locale = QLocale()
+        day_name = locale.dayName(current_date.dayOfWeek())
         
-        # Sección de eventos de todo el día
+        # Etiqueta para el nombre del día
+        day_label = QLabel(day_name)
+        day_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        # Etiqueta para el número del día
+        date_label = QLabel(str(current_date.day()))
+        date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        # Verificar si es el día actual
+        is_today = current_date == QDate.currentDate()
+        
+        if is_today:
+            date_label.setStyleSheet(f"""
+                QLabel {{
+                    color: white;
+                    background-color: {accent_color};
+                    border-radius: 12px;
+                    padding: 2px 6px;
+                    font-weight: bold;
+                    font-size: 14px;
+                }}
+            """)
+        else:
+            date_label.setStyleSheet(f"""
+                QLabel {{
+                    color: {text_color};
+                    font-size: 14px;
+                }}
+            """)
+        
+        day_label.setStyleSheet(f"""
+            QLabel {{
+                color: {text_color};
+                font-weight: bold;
+            }}
+        """)
+        
+        day_layout.addWidget(day_label)
+        day_layout.addWidget(date_label)
+        
+        self.day_grid.addWidget(day_header, 0, 1)
+        
+        # Sección para eventos de todo el día (solo en la parte superior)
         if all_day_events:
-            # Cabecera para eventos de todo el día
-            all_day_header = QLabel("Eventos de todo el día")
-            all_day_header.setStyleSheet(Theme.SECTION_HEADER_STYLE)
-            day_layout.addWidget(all_day_header)
-            
-            # Contenedor para eventos de todo el día
             all_day_container = QWidget()
             all_day_layout = QVBoxLayout(all_day_container)
-            all_day_layout.setContentsMargins(0, 0, 0, 0)
-            all_day_layout.setSpacing(5)
+            all_day_layout.setContentsMargins(5, 5, 5, 5)
+            all_day_layout.setSpacing(2)
             
-            # Añadir eventos de todo el día
+            all_day_label = QLabel("Todo el día")
+            all_day_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            all_day_label.setStyleSheet(f"""
+                QLabel {{
+                    color: {text_color};
+                    font-weight: bold;
+                    padding: 5px;
+                    font-size: 12px;
+                }}
+            """)
+            
+            self.day_grid.addWidget(all_day_label, 1, 0)
+            
+            # Contenedor para eventos de todo el día
+            events_container = QWidget()
+            events_layout = QVBoxLayout(events_container)
+            events_layout.setContentsMargins(2, 2, 2, 2)
+            events_layout.setSpacing(2)
+            
             for event in all_day_events:
-                event_widget = QLabel(event.title)
+                # Buscar color_id por nombre si no lo tiene
+                if not event.color_id and event.title in event_colors_by_name:
+                    event.color_id = event_colors_by_name[event.title]
+                
+                event_label = QLabel(event.title)
+                event_label.setToolTip(f"{event.title} (Todo el día)")
                 
                 # Obtener color del evento
                 event_style = Theme.get_event_style(event.color_id)
@@ -679,110 +754,252 @@ class CalendarWidget(QWidget):
                         font-weight: bold;
                     """
                 
-                event_widget.setStyleSheet(f"""
+                event_label.setStyleSheet(f"""
                     QLabel {{
                         {event_style}
                         border-radius: 4px;
-                        padding: 8px 12px;
-                        font-size: 13px;
+                        padding: 4px 8px;
+                        font-size: 11px;
+                        margin: 1px;
                     }}
                 """)
                 
-                all_day_layout.addWidget(event_widget)
+                event_label.setMaximumHeight(22)
+                event_label.setWordWrap(False)
+                event_label.setTextFormat(Qt.TextFormat.PlainText)
+                
+                # Truncar texto largo
+                metrics = event_label.fontMetrics()
+                text = metrics.elidedText(event.title, Qt.TextElideMode.ElideRight, 200)
+                event_label.setText(text)
+                
+                events_layout.addWidget(event_label)
             
-            day_layout.addWidget(all_day_container)
-            day_layout.addSpacing(10)
+            events_layout.addStretch()
+            
+            # Estilo para el contenedor
+            events_container.setStyleSheet(f"""
+                QWidget {{
+                    background-color: {bg_color};
+                    border: 1px solid {border_color};
+                }}
+            """)
+            
+            self.day_grid.addWidget(events_container, 1, 1)
         
-        # Sección de eventos con hora
-        if timed_events:
-            # Cabecera para eventos con hora
-            timed_header = QLabel("Eventos programados")
-            timed_header.setStyleSheet(Theme.SECTION_HEADER_STYLE)
-            day_layout.addWidget(timed_header)
+        # Añadir cabeceras de horas en la primera columna
+        # Empezamos en 2 porque 0=cabecera de día, 1=eventos de todo el día
+        for hour in range(24):
+            grid_row = hour + 2  # +2 por el offset de cabecera y all-day
             
-            # Contenedor para eventos con hora
-            timed_container = QWidget()
-            timed_layout = QGridLayout(timed_container)
-            timed_layout.setContentsMargins(0, 0, 0, 0)
-            timed_layout.setSpacing(5)
+            hour_label = QLabel(f"{hour}:00")
+            hour_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             
-            # Organizar eventos por hora
-            hour_events = {}
-            for hour in range(24):
-                hour_events[hour] = []
+            hour_label.setStyleSheet(f"""
+                QLabel {{
+                    color: {text_color};
+                    padding: 5px;
+                    font-size: 12px;
+                }}
+            """)
             
-            for event in timed_events:
-                hour = event.start_datetime.hour
-                hour_events[hour].append(event)
+            self.day_grid.addWidget(hour_label, grid_row, 0)
+        
+        # Preparar eventos por hora con posicionamiento más inteligente
+        hour_events_slots = {}
+        for hour in range(24):
+            hour_events_slots[hour] = [[] for _ in range(5)]  # 5 slots por hora para eventos paralelos
+        
+        # Distribuir eventos en slots para evitar solapamiento
+        for event in timed_events:
+            start_hour = event.start_datetime.hour
+            end_hour = event.end_datetime.hour
+            start_minute = event.start_datetime.minute
             
-            # Añadir eventos por hora
-            row = 0
-            for hour in range(24):
-                if hour_events[hour]:
-                    # Etiqueta de hora
-                    hour_label = QLabel(f"{hour:02d}:00")
-                    hour_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
-                    hour_label.setStyleSheet(f"""
-                        QLabel {{
-                            color: {text_color};
+            # Buscar color_id por nombre si no lo tiene
+            if not event.color_id and event.title in event_colors_by_name:
+                event.color_id = event_colors_by_name[event.title]
+            
+            # Determinar en qué slot colocar el evento (0-4)
+            slot_found = False
+            for slot in range(5):
+                can_use_slot = True
+                
+                # Comprobar disponibilidad en todas las horas que abarca el evento
+                for hour in range(start_hour, min(end_hour + 1, 24)):
+                    if hour_events_slots[hour][slot] and hour_events_slots[hour][slot][0].start_datetime.minute <= start_minute + 10:
+                        can_use_slot = False
+                        break
+                
+                if can_use_slot:
+                    # Reservar todas las horas que ocupa el evento
+                    for hour in range(start_hour, min(end_hour + 1, 24)):
+                        hour_events_slots[hour][slot] = [event]
+                    slot_found = True
+                    break
+            
+            # Si no se encuentra slot, añadir al primer slot
+            if not slot_found:
+                for hour in range(start_hour, min(end_hour + 1, 24)):
+                    hour_events_slots[hour][0].append(event)
+        
+        # Añadir celdas para cada hora del día
+        for hour in range(24):
+            grid_row = hour + 2  # +2 por el offset de cabecera y all-day
+            
+            # Crear celda para la hora
+            hour_cell = QWidget()
+            cell_layout = QHBoxLayout(hour_cell)  # Cambiado a horizontal para distribuir eventos
+            cell_layout.setContentsMargins(0, 0, 0, 0)
+            cell_layout.setSpacing(2)
+            
+            # Verificar si hay eventos en esta hora
+            has_events = any(slot for slot in hour_events_slots[hour])
+            
+            # Verificar si algún evento de esta hora está en la lista de eventos resaltados
+            has_highlighted_event = any(
+                event in highlighted_events 
+                for slot in hour_events_slots[hour] 
+                for event in slot
+            )
+            
+            # Añadir eventos por slot para esta hora
+            for slot_idx, slot_events in enumerate(hour_events_slots[hour]):
+                if not slot_events:
+                    # Añadir espacio vacío para mantener la estructura
+                    spacer = QWidget()
+                    spacer.setFixedWidth(30)  # Ancho fijo para cada slot
+                    cell_layout.addWidget(spacer)
+                    continue
+                
+                # Contenedor para este slot
+                slot_container = QWidget()
+                slot_layout = QVBoxLayout(slot_container)
+                slot_layout.setContentsMargins(1, 1, 1, 1)
+                slot_layout.setSpacing(2)
+                
+                for event in slot_events:
+                    # Mostrar la hora de inicio para eventos que comienzan en esta hora
+                    if event.start_datetime.hour == hour:
+                        duration_mins = (event.end_datetime - event.start_datetime).total_seconds() / 60
+                        if duration_mins < 60:
+                            duration_text = f"{int(duration_mins)}m"
+                        else:
+                            hours = int(duration_mins / 60)
+                            mins = int(duration_mins % 60)
+                            duration_text = f"{hours}h" if mins == 0 else f"{hours}h{mins}m"
+                        
+                        event_text = f"{event.start_datetime.strftime('%H:%M')} {event.title} ({duration_text})"
+                    else:
+                        event_text = event.title
+                    
+                    event_label = QLabel(event_text)
+                    event_label.setToolTip(f"{event.title} ({event.start_datetime.strftime('%H:%M')} - {event.end_datetime.strftime('%H:%M')})")
+                    
+                    # Obtener color del evento
+                    event_style = Theme.get_event_style(event.color_id)
+                    
+                    # Aplicar estilo adicional si el evento está resaltado
+                    if event in highlighted_events:
+                        event_style += """
+                            border: 2px solid #FF5722;
                             font-weight: bold;
-                            padding: 5px;
+                        """
+                    
+                    # Ajustar márgenes según el slot para crear efecto escalonado
+                    left_margin = slot_idx * 5
+                    
+                    event_label.setStyleSheet(f"""
+                        QLabel {{
+                            {event_style}
+                            border-radius: 4px;
+                            padding: 2px 4px;
+                            font-size: 11px;
+                            margin-left: {left_margin}px;
                         }}
                     """)
                     
-                    timed_layout.addWidget(hour_label, row, 0)
-            
-                    # Contenedor para eventos de esta hora
-                    hour_container = QWidget()
-                    hour_layout = QVBoxLayout(hour_container)
-                    hour_layout.setContentsMargins(0, 0, 0, 0)
-                    hour_layout.setSpacing(5)
+                    event_label.setMaximumHeight(20)
+                    event_label.setWordWrap(False)
+                    event_label.setTextFormat(Qt.TextFormat.PlainText)
                     
-                    # Añadir eventos de esta hora
-                    for event in hour_events[hour]:
-                        event_widget = QLabel(f"{event.start_datetime.strftime('%H:%M')} - {event.end_datetime.strftime('%H:%M')} {event.title}")
-                        
-                        # Obtener color del evento
-                        event_style = Theme.get_event_style(event.color_id)
-                        
-                        # Aplicar estilo adicional si el evento está resaltado
-                        if event in highlighted_events:
-                            event_style += """
-                                border: 2px solid #FF5722;
-                                font-weight: bold;
-                            """
-                        
-                        event_widget.setStyleSheet(f"""
-                            QLabel {{
-                                {event_style}
-                                border-radius: 4px;
-                                padding: 8px 12px;
-                                font-size: 13px;
-                            }}
-                        """)
-                        
-                    hour_layout.addWidget(event_widget)
+                    # Truncar texto largo
+                    metrics = event_label.fontMetrics()
+                    text = metrics.elidedText(event_text, Qt.TextElideMode.ElideRight, 200 - (slot_idx * 10))
+                    event_label.setText(text)
                     
-                    timed_layout.addWidget(hour_container, row, 1)
-                    row += 1
+                    slot_layout.addWidget(event_label)
+                
+                # Añadir espacio en blanco para completar el slot
+                slot_layout.addStretch()
+                cell_layout.addWidget(slot_container, 1)  # Stretch factor 1 para distribuir espacio
             
-            day_layout.addWidget(timed_container)
-        
-        # Si no hay eventos, mostrar mensaje
-        if not day_events:
-            no_events = QLabel("No hay eventos para este día")
-            no_events.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            no_events.setStyleSheet(f"""
-                QLabel {{
-                    color: {text_color};
-                    font-size: 14px;
-                    padding: 20px;
+            # Añadir espacio en blanco para completar la celda
+            cell_layout.addStretch()
+            
+            # Estilo para la celda
+            cell_style = f"""
+                QWidget {{
+                    background-color: {bg_color};
+                    border: 1px solid {border_color};
                 }}
-            """)
-            day_layout.addWidget(no_events)
+            """
+            
+            # Si tiene eventos resaltados, añadir fondo especial
+            if has_highlighted_event:
+                highlight_bg = f"{accent_color}15"  # Color con 15% de opacidad
+                cell_style = f"""
+                    QWidget {{
+                        background-color: {highlight_bg};
+                        border: 1px solid {accent_color};
+                    }}
+                """
+            
+            hour_cell.setStyleSheet(cell_style)
+            
+            # Hacer que la celda sea clickeable
+            hour_cell.mousePressEvent = lambda e, date=current_date: self.on_date_selected(date)
+            hour_cell.setCursor(Qt.CursorShape.PointingHandCursor)
+            
+            self.day_grid.addWidget(hour_cell, grid_row, 1)
         
-        # Añadir espacio en blanco al final
-        day_layout.addStretch()
+        # Añadir línea de tiempo actual si el día seleccionado es hoy
+        if is_today:
+            now = datetime.now()
+            current_hour = now.hour
+            current_minute = now.minute
+            
+            # Calcular la posición de la línea (solo si la hora actual está en el rango visible)
+            if 0 <= current_hour < 24:
+                # Crear línea horizontal para la hora actual
+                time_line = QFrame()
+                time_line.setFrameShape(QFrame.Shape.HLine)
+                time_line.setFrameShadow(QFrame.Shadow.Plain)
+                time_line.setStyleSheet("""
+                    background-color: #FF5050;
+                    height: 2px;
+                """)
+                
+                # Añadir un indicador de la hora actual
+                current_time_label = QLabel(f"{current_hour:02d}:{current_minute:02d}")
+                current_time_label.setStyleSheet("""
+                    color: #FF5050;
+                    font-weight: bold;
+                    font-size: 10px;
+                    padding: 0px 2px;
+                    background-color: rgba(255, 80, 80, 0.1);
+                    border-radius: 2px;
+                """)
+                current_time_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+                
+                # Posicionar la línea y etiqueta en el grid (ajustar para tener en cuenta offsets)
+                grid_row = current_hour + 2  # +2 por el offset de cabecera y all-day
+                self.day_grid.addWidget(time_line, grid_row, 1)
+                self.day_grid.addWidget(current_time_label, grid_row, 0)
+        
+        # Crear widget para la vista de día
+        day_widget = QWidget()
+        day_widget.setLayout(self.day_grid)
         
         # Añadir widget al scroll area
         self.day_scroll.setWidget(day_widget)

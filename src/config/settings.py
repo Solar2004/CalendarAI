@@ -10,7 +10,7 @@ load_dotenv()
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///data/calendar.db')
-DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 
 class Settings(QObject):
     settingsChanged = pyqtSignal()  # Signal para notificar cambios
