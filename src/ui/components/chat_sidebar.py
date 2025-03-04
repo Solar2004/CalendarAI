@@ -14,6 +14,8 @@ from .chat_worker import Worker
 import logging
 from datetime import datetime
 import os
+from core.function_identifier import FunctionIdentifier
+from core.functions import codigo_morse  # Importar las funciones
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +149,8 @@ class ChatSidebar(QWidget):
         self.thinking_timer = QTimer()
         self.thinking_timer.timeout.connect(self.update_thinking_indicator)
 
+        self.function_identifier = FunctionIdentifier()
+
     def init_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -265,6 +269,14 @@ class ChatSidebar(QWidget):
             self.add_message(message, True)
             self.start_thinking_animation()
 
+            # Identificar la función antes de procesar el mensaje
+            function_id = self.function_identifier.identify_function(message)
+            if function_id != "none":
+                # Lógica para ejecutar la función correspondiente
+                self.execute_function(function_id, message)
+                self.stop_thinking_animation()  # Detener la animación de pensamiento
+                return
+
             # Crear un hilo para procesar la respuesta
             self.thread = QThread()
             self.worker = Worker(self.ai_assistant, message)
@@ -280,16 +292,38 @@ class ChatSidebar(QWidget):
             # Iniciar el hilo
             self.thread.start()
 
-    def process_ai_response(self, response):
+    def process_ai_response(self, text):
         """Procesa la respuesta del AI"""
         try:
-            logger.info("Procesando respuesta de la IA para el mensaje: %s", response)
-            self.stop_thinking_animation()
-            self.add_message(response, False)
+            logger.info("Procesando respuesta de la IA para el mensaje: %s", text)
+            function_id = self.function_identifier.identify_function(text)
+            if function_id != "none":
+                # Lógica para ejecutar la función correspondiente
+                self.execute_function(function_id, text)
+            else:
+                response = self.ai_assistant.process_message(text)
+                self.stop_thinking_animation()
+                self.add_message(response, False)
         except Exception as e:
             logger.error("Error al procesar la respuesta de la IA: %s", str(e))
             self.stop_thinking_animation()
             self.add_message(f"Error: {str(e)}", False)
+
+    def execute_function(self, function_id, text):
+        """Ejecuta la función correspondiente según la ID."""
+        try:
+            if function_id == "codigo_morse":
+                result = codigo_morse(text)
+                self.add_message(result, False)  # Mostrar el resultado en el chat
+            elif function_id == "otra_funcion":
+                # Implementar lógica para otra función
+                pass
+            else:
+                logger.warning("Función no reconocida: %s", function_id)
+                self.add_message("Función no reconocida.", False)
+        except Exception as e:
+            logger.error("Error al ejecutar la función %s: %s", function_id, str(e))
+            self.add_message(f"Error al ejecutar la función: {str(e)}", False)
 
     def handle_error(self, error_msg):
         """Maneja errores en el procesamiento de la IA"""
