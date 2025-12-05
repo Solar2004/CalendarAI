@@ -17,8 +17,9 @@ class FunctionIdentifier:
         Eres una IA enfocada en identificar funciones en el mensaje del usuario. 
         El mensaje es: "{message}"
         Las funciones disponibles son:
-        - codigo_morse: traduce el mensaje a código Morse
-        - otra_funcion: descripción de otra función
+        - codigo_morse: traduce el mensaje a código Morse. Ejemplo: "Traduce HOLA a morse" -> "codigo_morse"
+        - estadisticas_texto: calcula estadísticas (palabras, caracteres, tiempo lectura). Ejemplo: "Cuantas palabras tiene este texto..." -> "estadisticas_texto"
+        - sugerir_titulo: sugiere un título creativo para el texto usando IA. Ejemplo: "Sugiere un titulo para..." -> "sugerir_titulo"
         Asegúrate de devolver solo la ID de la función en minúsculas, o 'none' si no hay función.
         """
 

@@ -11,11 +11,13 @@ from core.calendar_analyzer import CalendarAnalyzer
 from .loading_overlay import LoadingOverlay
 from .analysis_worker import AnalysisWorker
 from .chat_worker import Worker
+from ..workers.function_worker import FunctionWorker
 import logging
 from datetime import datetime
 import os
 from core.function_identifier import FunctionIdentifier
-from core.functions import codigo_morse  # Importar las funciones
+from core.functions import codigo_morse, estadisticas_texto, sugerir_titulo  # Importar las funciones
+from PyQt6.QtCore import Qt, pyqtSignal, QSize, QPoint, QTimer, QPointF, QThread, QThreadPool
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +152,7 @@ class ChatSidebar(QWidget):
         self.thinking_timer.timeout.connect(self.update_thinking_indicator)
 
         self.function_identifier = FunctionIdentifier()
+        self.threadpool = QThreadPool()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -174,6 +177,15 @@ class ChatSidebar(QWidget):
         
         header_layout.addWidget(title_label)
         header_layout.addStretch()
+
+        # Clear Chat button
+        self.clear_chat_btn = QPushButton("🧹")
+        self.clear_chat_btn.setFixedSize(32, 32)
+        self.clear_chat_btn.setStyleSheet("border: none; font-size: 16px;")
+        self.clear_chat_btn.setToolTip("Limpiar chat")
+        self.clear_chat_btn.clicked.connect(self.clear_chat)
+        header_layout.addWidget(self.clear_chat_btn)
+
         header_layout.addWidget(self.theme_toggle_btn)
         
         # Área de mensajes
@@ -314,7 +326,19 @@ class ChatSidebar(QWidget):
         try:
             if function_id == "codigo_morse":
                 result = codigo_morse(text)
-                self.add_message(result, False)  # Mostrar el resultado en el chat
+                self.add_message(result, False)
+            elif function_id == "estadisticas_texto":
+                result = estadisticas_texto(text)
+                self.add_message(result, False)
+            elif function_id == "sugerir_titulo":
+                self.add_message("Generando título sugerido...", False)
+                self.start_thinking_animation()
+
+                worker = FunctionWorker(sugerir_titulo, text)
+                worker.signals.finished.connect(self._handle_function_result)
+                worker.signals.error.connect(self._handle_function_error)
+                self.threadpool.start(worker)
+
             elif function_id == "otra_funcion":
                 # Implementar lógica para otra función
                 pass
@@ -325,10 +349,28 @@ class ChatSidebar(QWidget):
             logger.error("Error al ejecutar la función %s: %s", function_id, str(e))
             self.add_message(f"Error al ejecutar la función: {str(e)}", False)
 
+    def _handle_function_result(self, result):
+        self.stop_thinking_animation()
+        self.add_message(result, False)
+
+    def _handle_function_error(self, error):
+        self.stop_thinking_animation()
+        self.add_message(f"Error en la función: {error}", False)
+
     def handle_error(self, error_msg):
         """Maneja errores en el procesamiento de la IA"""
         self.stop_thinking_animation()
         self.add_message(f"Error: {error_msg}", False)
+
+    def clear_chat(self):
+        """Limpia el historial de chat visible."""
+        # Remove all widgets from chat_layout except the stretch
+        while self.chat_layout.count() > 1:
+            item = self.chat_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self.message_history.clear()
+        self.add_message("Chat limpiado.", False)
 
     def start_thinking_animation(self):
         """Inicia la animación de 'pensando'"""

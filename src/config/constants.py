@@ -55,6 +55,8 @@ LOG_DIRECTORY = 'logs'
 
 # AI constants
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+AI_MODEL = "google/gemini-2.0-flash-lite-preview-02-05:free"
+
 if not OPENROUTER_API_KEY:
     raise ValueError("OPENROUTER_API_KEY no encontrada en variables de entorno")
 DEFAULT_AI_CONTEXT = """
